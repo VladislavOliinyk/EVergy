@@ -19,6 +19,8 @@ const {
   lastError,
   sessionDurationSeconds,
   sessionStartedAt,
+  startCharging,
+  stopCharging,
 } = useChargerTelemetry();
 
   const [selectedCurrent, setSelectedCurrent] =
@@ -146,26 +148,35 @@ const {
     setCurrentPickerOpen(false);
   }
 
-  function applyCurrent() {
-    if (
-      applyState === "applying" ||
-      selectedCurrent === null
-    ) {
-      return;
-    }
-
-    /*
-     * Command control is intentionally not implemented yet.
-     *
-     * The target value remains controlled exclusively
-     * by ElectroS telemetry.
-     */
-    setApplyState("applying");
-
-    window.setTimeout(() => {
-      setApplyState("idle");
-    }, 700);
+function applyCurrent() {
+  if (
+    applyState === "applying" ||
+    selectedCurrent === null
+  ) {
+    return;
   }
+
+  setApplyState("applying");
+
+  try {
+    startCharging(selectedCurrent);
+
+    console.log(
+      "[EVergy] START command sent",
+      selectedCurrent,
+      "A",
+    );
+
+    setCurrentPickerOpen(false);
+  } catch (error) {
+    console.error(
+      "[EVergy] Failed to start charging",
+      error,
+    );
+
+    setApplyState("idle");
+  }
+}
 
   /* ---------------------------------------------------------------------- */
   /* Formatting                                                             */
@@ -580,19 +591,27 @@ const {
         {/* STOP CHARGING                                                      */}
         {/* ================================================================== */}
 
-        <button
-          type="button"
-          className={`-translate-y-5 h-14 rounded-2xl border text-[11px] font-semibold tracking-[0.18em] transition-all sm:-translate-y-6 ${
-            isDark
-              ? "border-red-400/20 bg-red-400/[0.045] text-red-300/85 hover:border-red-400/35 hover:bg-red-400/[0.08]"
-              : "border-red-500/15 bg-red-500/[0.045] text-red-600/80 hover:border-red-500/25 hover:bg-red-500/[0.08]"
-          }`}
-        >
-          <span className="mr-2">
-            ■
-          </span>
-          STOP CHARGING
-        </button>
+<button
+  type="button"
+  onClick={() => {
+    try {
+      stopCharging();
+
+      console.log(
+        "[EVergy] STOP command sent",
+      );
+    } catch (error) {
+      console.error(
+        "[EVergy] Failed to stop charging",
+        error,
+      );
+    }
+  }}
+  className={`...`}
+>
+  <span className="mr-2">■</span>
+  STOP CHARGING
+</button>
       </div>
 
       {/* CURRENT PICKER */}

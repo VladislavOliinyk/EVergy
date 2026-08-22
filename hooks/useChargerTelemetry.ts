@@ -14,6 +14,19 @@ import {
   type ElectroSWebSocketEvent,
 } from "../providers/electros/websocket";
 
+import {
+  buildStartCommand,
+  buildStopCommand,
+} from "../providers/electros/commands";
+
+import {
+  finishLocalSession,
+  getActiveSession,
+  getCurrentSessionDurationSeconds,
+  startLocalSession,
+  touchLocalSession,
+} from "../lib/sessionStorage";
+
 const DEFAULT_DEVICE_ID = "b8349";
 
 const EMPTY_TELEMETRY: ChargerTelemetry = {
@@ -46,22 +59,6 @@ const EMPTY_TELEMETRY: ChargerTelemetry = {
   timestamp: null,
 };
 
-function getSessionStorageKey(
-  deviceId: string,
-) {
-  return `evergy-session-${deviceId}`;
-}
-
-type StoredSession = {
-  startedAt: number | null;
-  lastDurationSeconds: number;
-};
-
-const EMPTY_SESSION: StoredSession = {
-  startedAt: null,
-  lastDurationSeconds: 0,
-};
-
 export function useChargerTelemetry(
   deviceId: string = DEFAULT_DEVICE_ID,
 ) {
@@ -73,150 +70,82 @@ export function useChargerTelemetry(
   const [lastError, setLastError] =
     useState<Error | null>(null);
 
-  const [sessionStartedAt, setSessionStartedAt] =
-    useState<number | null>(null);
+  const [
+    sessionDurationSeconds,
+    setSessionDurationSeconds,
+  ] = useState(0);
 
-  const [sessionDurationSeconds, setSessionDurationSeconds] =
-    useState(0);
+  const [
+    sessionStartedAt,
+    setSessionStartedAt,
+  ] = useState<number | null>(null);
 
   const clientRef =
     useRef<ElectroSWebSocket | null>(null);
 
-  const sessionRef =
-    useRef<StoredSession>(
-      EMPTY_SESSION,
-    );
-
-  const previousChargingRef =
-    useRef(false);
-
-  const sessionReadyRef =
+  /*
+   * Prevents WebSocket telemetry from being processed
+   * before the persisted local session has been restored.
+   */
+  const sessionInitializedRef =
     useRef(false);
 
   /*
-   * ------------------------------------------------------------------------
-   * Session persistence
-   * ------------------------------------------------------------------------
-   *
-   * We store only the session start timestamp and the last completed
-   * duration.
-   *
-   * ElectroS remains the source of truth for the current charging state.
-   * localStorage is only persistence so a browser refresh does not destroy
-   * the current session.
+   * Remembers whether the previous meaningful telemetry
+   * state was charging.
+   */
+  const wasChargingRef =
+    useRef(false);
+
+  /*
+   * --------------------------------------------------------------
+   * RESTORE LOCAL SESSION
+   * --------------------------------------------------------------
    */
   useEffect(() => {
-    const storageKey =
-      getSessionStorageKey(deviceId);
-
     try {
-      const saved =
-        window.localStorage.getItem(
-          storageKey,
+      const activeSession =
+        getActiveSession();
+
+      if (activeSession) {
+        setSessionStartedAt(
+          activeSession.startedAt,
         );
 
-      if (!saved) {
-        sessionRef.current = {
-          ...EMPTY_SESSION,
-        };
+        setSessionDurationSeconds(
+          getCurrentSessionDurationSeconds(),
+        );
 
+        console.log(
+          "[EVergy] Restored active charging session",
+          {
+            startedAt:
+              activeSession.startedAt,
+            durationSeconds:
+              getCurrentSessionDurationSeconds(),
+          },
+        );
+      } else {
         setSessionStartedAt(null);
         setSessionDurationSeconds(0);
-
-        sessionReadyRef.current = true;
-
-        return;
       }
-
-      const parsed =
-        JSON.parse(saved) as Partial<StoredSession>;
-
-      const startedAt =
-        typeof parsed.startedAt === "number" &&
-        Number.isFinite(parsed.startedAt)
-          ? parsed.startedAt
-          : null;
-
-      const lastDurationSeconds =
-        typeof parsed.lastDurationSeconds ===
-          "number" &&
-        Number.isFinite(
-          parsed.lastDurationSeconds,
-        )
-          ? Math.max(
-              0,
-              Math.floor(
-                parsed.lastDurationSeconds,
-              ),
-            )
-          : 0;
-
-      sessionRef.current = {
-        startedAt,
-        lastDurationSeconds,
-      };
-
-      setSessionStartedAt(startedAt);
-
-      setSessionDurationSeconds(
-        startedAt !== null
-          ? Math.max(
-              0,
-              Math.floor(
-                (Date.now() - startedAt) /
-                  1000,
-              ),
-            )
-          : lastDurationSeconds,
-      );
-
-      sessionReadyRef.current = true;
     } catch (error) {
       console.error(
-        "[EVergy] Failed to restore charging session",
+        "[EVergy] Failed to restore local charging session",
         error,
       );
-
-      sessionRef.current = {
-        ...EMPTY_SESSION,
-      };
 
       setSessionStartedAt(null);
       setSessionDurationSeconds(0);
-
-      sessionReadyRef.current = true;
     }
+
+    sessionInitializedRef.current = true;
   }, [deviceId]);
 
   /*
-   * Save session state.
-   */
-  const persistSession = (
-    session: StoredSession,
-  ) => {
-    sessionRef.current = session;
-
-    try {
-      window.localStorage.setItem(
-        getSessionStorageKey(deviceId),
-        JSON.stringify(session),
-      );
-    } catch (error) {
-      console.error(
-        "[EVergy] Failed to persist charging session",
-        error,
-      );
-    }
-  };
-
-  /*
-   * ------------------------------------------------------------------------
-   * Live session timer
-   * ------------------------------------------------------------------------
-   *
-   * The timer uses the locally persisted start timestamp.
-   *
-   * It does NOT create a new start timestamp every time the page renders.
+   * --------------------------------------------------------------
+   * LIVE SESSION TIMER
+   * --------------------------------------------------------------
    */
   useEffect(() => {
     if (sessionStartedAt === null) {
@@ -224,15 +153,14 @@ export function useChargerTelemetry(
     }
 
     const updateDuration = () => {
-      const elapsed =
-        Math.max(
-          0,
-          Math.floor(
-            (Date.now() -
-              sessionStartedAt) /
-              1000,
-          ),
-        );
+      const elapsed = Math.max(
+        0,
+        Math.floor(
+          (Date.now() -
+            sessionStartedAt) /
+            1000,
+        ),
+      );
 
       setSessionDurationSeconds(
         elapsed,
@@ -253,9 +181,9 @@ export function useChargerTelemetry(
   }, [sessionStartedAt]);
 
   /*
-   * ------------------------------------------------------------------------
-   * ElectroS WebSocket
-   * ------------------------------------------------------------------------
+   * --------------------------------------------------------------
+   * ELECTROS WEBSOCKET
+   * --------------------------------------------------------------
    */
   useEffect(() => {
     let mounted = true;
@@ -268,7 +196,9 @@ export function useChargerTelemetry(
       }
 
       /*
-       * WebSocket connection state.
+       * ------------------------------------------------------------
+       * WEBSOCKET CONNECTION STATE
+       * ------------------------------------------------------------
        */
       if (event.type === "state") {
         setTelemetry((current) => ({
@@ -280,7 +210,9 @@ export function useChargerTelemetry(
       }
 
       /*
-       * Incoming ElectroS telemetry packet.
+       * ------------------------------------------------------------
+       * TELEMETRY PACKET
+       * ------------------------------------------------------------
        */
       if (event.type === "message") {
         try {
@@ -289,192 +221,165 @@ export function useChargerTelemetry(
               event.data,
             );
 
-          setTelemetry((current) => {
-            /*
-             * Live telemetry is replaced every second.
-             *
-             * Historical information is preserved when
-             * the incoming packet does not contain it.
-             */
-            const nextTelemetry: ChargerTelemetry = {
-              ...current,
-              ...parsedTelemetry,
+          /*
+           * --------------------------------------------------------
+           * UPDATE LIVE TELEMETRY
+           * --------------------------------------------------------
+           */
+          setTelemetry((current) => ({
+            ...current,
+            ...parsedTelemetry,
 
-              connectionState: "connected",
+            connectionState:
+              "connected",
 
-              monthlyEnergy:
-                parsedTelemetry.monthlyEnergy ??
-                current.monthlyEnergy,
+            monthlyEnergy:
+              parsedTelemetry.monthlyEnergy ??
+              current.monthlyEnergy,
 
-              chargingHistory:
-                parsedTelemetry.chargingHistory
-                  ?.length
-                  ? parsedTelemetry.chargingHistory
-                  : current.chargingHistory,
-            };
+            chargingHistory:
+              parsedTelemetry
+                .chargingHistory
+                ?.length
+                ? parsedTelemetry
+                    .chargingHistory
+                : current.chargingHistory,
+          }));
 
-            const charging =
-              nextTelemetry.operationState ===
+          /*
+           * --------------------------------------------------------
+           * LOCAL SESSION TRACKING
+           * --------------------------------------------------------
+           */
+          if (
+            sessionInitializedRef.current
+          ) {
+            const operationState =
+              parsedTelemetry.operationState;
+
+            const currentlyCharging =
+              operationState ===
               "charging";
 
-            const wasCharging =
-              previousChargingRef.current;
-
             /*
-             * --------------------------------------------------------------
-             * SESSION START
-             * --------------------------------------------------------------
-             *
-             * ElectroS says charging has started.
-             *
-             * If we already have a persisted active session, keep it.
-             * This is what makes F5/reconnect work correctly.
-             *
-             * If there is no active session, create one now.
+             * ------------------------------------------------------
+             * CHARGING
+             * ------------------------------------------------------
              */
-            if (
-              charging &&
-              sessionReadyRef.current
-            ) {
-              const existingStart =
-                sessionRef.current.startedAt;
+            if (currentlyCharging) {
+              const activeSession =
+                getActiveSession();
 
-              if (existingStart === null) {
-                const startedAt =
-                  Date.now();
+              /*
+               * Existing session survives:
+               *
+               * - page refresh
+               * - React remount
+               * - WebSocket reconnect
+               */
+              const session =
+                activeSession ??
+                startLocalSession();
 
-                persistSession({
-                  startedAt,
-                  lastDurationSeconds:
-                    sessionRef.current
-                      .lastDurationSeconds,
-                });
+              touchLocalSession();
 
-                setSessionStartedAt(
-                  startedAt,
-                );
+              setSessionStartedAt(
+                session.startedAt,
+              );
 
-                setSessionDurationSeconds(
-                  0,
-                );
+              setSessionDurationSeconds(
+                getCurrentSessionDurationSeconds(),
+              );
 
-                console.log(
-                  "[EVergy] Charging session started",
-                  {
-                    startedAt,
-                    electroSTimestamp:
-                      nextTelemetry.timestamp,
-                  },
-                );
-              } else {
-                /*
-                 * Existing session restored from localStorage.
-                 */
-                setSessionStartedAt(
-                  existingStart,
-                );
-              }
+              wasChargingRef.current =
+                true;
+
+              console.log(
+                "[EVergy] Charging session active",
+                {
+                  startedAt:
+                    session.startedAt,
+                  durationSeconds:
+                    getCurrentSessionDurationSeconds(),
+                  electroSTimestamp:
+                    parsedTelemetry.timestamp,
+                },
+              );
             }
 
             /*
-             * --------------------------------------------------------------
-             * SESSION END
-             * --------------------------------------------------------------
-             *
-             * ElectroS was charging and now reports another state.
-             *
-             * Save the final duration before clearing the active start.
+             * ------------------------------------------------------
+             * NOT CHARGING
+             * ------------------------------------------------------
              */
-            if (
-              wasCharging &&
-              !charging &&
-              sessionReadyRef.current
-            ) {
-              const startedAt =
-                sessionRef.current.startedAt;
+            else {
+              const definiteStopStates =
+                new Set([
+                  "waiting_for_vehicle",
+                  "connected_no_charge",
+                  "charging_error",
+                  "charging_forbidden",
+                  "low_voltage",
+                  "leakage_detected",
+                  "overcurrent",
+                ]);
 
-              if (startedAt !== null) {
-                const finalDuration =
-                  Math.max(
-                    0,
-                    Math.floor(
-                      (Date.now() -
-                        startedAt) /
-                        1000,
-                    ),
+              const shouldFinishSession =
+                wasChargingRef.current &&
+                definiteStopStates.has(
+                  operationState,
+                );
+
+              if (shouldFinishSession) {
+                const activeSession =
+                  getActiveSession();
+
+                if (activeSession) {
+                  const finishedDuration =
+                    Math.max(
+                      0,
+                      Math.round(
+                        (Date.now() -
+                          activeSession.startedAt) /
+                          1000,
+                      ),
+                    );
+
+                  const finishedSession =
+                    finishLocalSession({
+                      energyKwh:
+                        parsedTelemetry.energyKwh,
+                    });
+
+                  console.log(
+                    "[EVergy] Charging session finished",
+                    {
+                      startedAt:
+                        activeSession.startedAt,
+                      durationSeconds:
+                        finishedDuration,
+                      energyKwh:
+                        finishedSession?.energyKwh ??
+                        parsedTelemetry.energyKwh,
+                      electroSTimestamp:
+                        parsedTelemetry.timestamp,
+                    },
                   );
-
-                persistSession({
-                  startedAt: null,
-                  lastDurationSeconds:
-                    finalDuration,
-                });
+                }
 
                 setSessionStartedAt(
                   null,
                 );
 
                 setSessionDurationSeconds(
-                  finalDuration,
+                  0,
                 );
 
-                console.log(
-                  "[EVergy] Charging session finished",
-                  {
-                    durationSeconds:
-                      finalDuration,
-                    electroSTimestamp:
-                      nextTelemetry.timestamp,
-                  },
-                );
+                wasChargingRef.current =
+                  false;
               }
             }
-
-            previousChargingRef.current =
-              charging;
-
-            console.log(
-              "[EVergy] Telemetry updated",
-              {
-                timestamp:
-                  nextTelemetry.timestamp,
-                voltage:
-                  nextTelemetry.voltageVolts,
-                current:
-                  nextTelemetry.currentAmps,
-                power:
-                  nextTelemetry.powerKw,
-                energy:
-                  nextTelemetry.energyKwh,
-                target:
-                  nextTelemetry.chargingCurrentTargetAmps,
-                status:
-                  nextTelemetry.operationState,
-                monthlyEnergy:
-                  nextTelemetry.monthlyEnergy,
-                historyEntries:
-                  nextTelemetry.chargingHistory
-                    .length,
-                sessionStartedAt:
-                  sessionRef.current
-                    .startedAt,
-sessionDurationSeconds:
-  sessionRef.current.startedAt !== null
-    ? Math.max(
-        0,
-        Math.floor(
-          (Date.now() -
-            sessionRef.current.startedAt) /
-            1000,
-        ),
-      )
-    : sessionRef.current
-        .lastDurationSeconds,
-              },
-            );
-
-            return nextTelemetry;
-          });
+          }
 
           setLastError(null);
         } catch (error) {
@@ -499,7 +404,9 @@ sessionDurationSeconds:
       }
 
       /*
-       * WebSocket error.
+       * ------------------------------------------------------------
+       * WEBSOCKET ERROR
+       * ------------------------------------------------------------
        */
       if (event.type === "error") {
         const error = new Error(
@@ -533,6 +440,69 @@ sessionDurationSeconds:
     };
   }, [deviceId]);
 
+  /*
+   * --------------------------------------------------------------
+   * START CHARGING
+   * --------------------------------------------------------------
+   */
+  const startCharging = (
+    currentAmps: number,
+  ) => {
+    const client =
+      clientRef.current;
+
+    if (!client) {
+      throw new Error(
+        "ElectroS WebSocket client is not initialized.",
+      );
+    }
+
+    const command =
+      buildStartCommand(
+        currentAmps,
+      );
+
+    console.log(
+      "[EVergy] Sending START command",
+      {
+        currentAmps,
+        command,
+      },
+    );
+
+    client.send(command);
+  };
+
+  /*
+   * --------------------------------------------------------------
+   * STOP CHARGING
+   * --------------------------------------------------------------
+   */
+  const stopCharging = () => {
+    const client =
+      clientRef.current;
+
+    if (!client) {
+      throw new Error(
+        "ElectroS WebSocket client is not initialized.",
+      );
+    }
+
+    const command =
+      buildStopCommand();
+
+    console.log(
+      "[EVergy] Sending STOP command",
+    );
+
+    client.send(command);
+  };
+
+  /*
+   * --------------------------------------------------------------
+   * PUBLIC API
+   * --------------------------------------------------------------
+   */
   return {
     telemetry,
 
@@ -549,22 +519,12 @@ sessionDurationSeconds:
       telemetry.operationState ===
       "charging",
 
-    /*
-     * Current session duration in seconds.
-     *
-     * While charging:
-     *   Date.now() - startedAt
-     *
-     * After charging:
-     *   final stored duration
-     */
     sessionDurationSeconds,
 
-    /*
-     * Timestamp of the locally persisted active session.
-     *
-     * null = no active charging session.
-     */
     sessionStartedAt,
+
+    startCharging,
+
+    stopCharging,
   };
 }

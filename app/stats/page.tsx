@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useChargerTelemetry } from "../../hooks/useChargerTelemetry";
 
+
 type Theme = "dark" | "light";
 
 const MONTH_NAMES = [
