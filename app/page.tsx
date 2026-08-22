@@ -32,6 +32,9 @@ const {
   const [applyState, setApplyState] =
     useState<ApplyState>("idle");
 
+  const [stopState, setStopState] =
+    useState<"idle" | "stopping">("idle");
+
   const [theme, setTheme] =
     useState<Theme>("dark");
 
@@ -179,6 +182,33 @@ function applyCurrent() {
 }
 
   /* ---------------------------------------------------------------------- */
+  /* Stop charging                                                          */
+  /* ---------------------------------------------------------------------- */
+
+  function handleStopCharging() {
+    if (stopState === "stopping") {
+      return;
+    }
+
+    setStopState("stopping");
+
+    try {
+      stopCharging();
+
+      console.log(
+        "[EVergy] STOP command sent",
+      );
+    } catch (error) {
+      console.error(
+        "[EVergy] Failed to stop charging",
+        error,
+      );
+
+      setStopState("idle");
+    }
+  }
+
+  /* ---------------------------------------------------------------------- */
   /* Formatting                                                             */
   /* ---------------------------------------------------------------------- */
 
@@ -228,12 +258,12 @@ function applyCurrent() {
       ? currentLimit.toString()
       : "—";
 
-      const session =
+       const session =
   formatDuration(
     sessionDurationSeconds,
       );
 
-      const sessionSince =
+       const sessionSince =
   formatSessionStart(
     sessionStartedAt,
   );
@@ -480,8 +510,6 @@ function applyCurrent() {
               </div>
             </button>
 
-            {/* SESSION */}
-
             {/* ================================================================= */}
             {/* CENTRAL ENERGY CORE                                               */}
             {/* ================================================================= */}
@@ -588,30 +616,51 @@ function applyCurrent() {
         )}
 
         {/* ================================================================== */}
-        {/* STOP CHARGING                                                      */}
+        {/* CONTROL BUTTONS                                                    */}
         {/* ================================================================== */}
 
-<button
-  type="button"
-  onClick={() => {
-    try {
-      stopCharging();
+        <div className="flex gap-3 justify-center">
+          
+          {/* START BUTTON */}
+          <button
+            type="button"
+            onClick={openCurrentPicker}
+            disabled={applyState === "applying"}
+            aria-label="Start charging"
+            className={`flex items-center gap-2 px-6 py-3.5 rounded-2xl font-semibold tracking-[0.1em] text-sm transition-all duration-300 ${
+              applyState === "applying"
+                ? "cursor-wait opacity-60"
+                : "cursor-pointer hover:scale-105 active:scale-95"
+            } ${
+              isDark
+                ? "bg-emerald-500/30 border border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/40 hover:border-emerald-400/60"
+                : "bg-emerald-500/20 border border-emerald-600/30 text-emerald-600 hover:bg-emerald-500/30 hover:border-emerald-600/50"
+            }`}
+          >
+            <span className="text-lg">▶</span>
+            START
+          </button>
 
-      console.log(
-        "[EVergy] STOP command sent",
-      );
-    } catch (error) {
-      console.error(
-        "[EVergy] Failed to stop charging",
-        error,
-      );
-    }
-  }}
-  className={`...`}
->
-  <span className="mr-2">■</span>
-  STOP CHARGING
-</button>
+          {/* STOP BUTTON */}
+          <button
+            type="button"
+            onClick={handleStopCharging}
+            disabled={stopState === "stopping"}
+            aria-label="Stop charging"
+            className={`flex items-center gap-2 px-6 py-3.5 rounded-2xl font-semibold tracking-[0.1em] text-sm transition-all duration-300 ${
+              stopState === "stopping"
+                ? "cursor-wait opacity-60"
+                : "cursor-pointer hover:scale-105 active:scale-95"
+            } ${
+              isDark
+                ? "bg-red-500/30 border border-red-400/40 text-red-300 hover:bg-red-500/40 hover:border-red-400/60"
+                : "bg-red-500/20 border border-red-600/30 text-red-600 hover:bg-red-500/30 hover:border-red-600/50"
+            }`}
+          >
+            <span className="text-lg">■</span>
+            {stopState === "stopping" ? "STOPPING…" : "STOP"}
+          </button>
+        </div>
       </div>
 
       {/* CURRENT PICKER */}
