@@ -100,7 +100,7 @@ const {
   }, [theme, themeReady]);
 
   /* ---------------------------------------------------------------------- */
-  /* Status                                                                 */
+  /* Status - Real telemetry based                                          */
   /* ---------------------------------------------------------------------- */
 
   const status =
@@ -110,16 +110,16 @@ const {
     );
 
   const statusConfig = {
-    charging: {
-      label: "CHARGING",
+    online: {
+      label: "ONLINE",
       dot: "bg-emerald-400",
       text: isDark
         ? "text-emerald-300"
         : "text-emerald-600",
     },
 
-    connected: {
-      label: "CONNECTED",
+    charging: {
+      label: "CHARGING",
       dot: "bg-cyan-400",
       text: isDark
         ? "text-cyan-300"
@@ -128,16 +128,24 @@ const {
 
     waiting: {
       label: "WAITING",
-      dot: "bg-zinc-400",
+      dot: "bg-yellow-400",
       text: isDark
-        ? "text-zinc-300"
-        : "text-zinc-600",
+        ? "text-yellow-300"
+        : "text-yellow-600",
     },
 
     error: {
       label: "ERROR",
-      dot: "bg-red-400",
-      text: "text-red-400",
+      dot: "bg-red-500",
+      text: "text-red-500",
+    },
+
+    offline: {
+      label: "OFFLINE",
+      dot: "bg-zinc-500",
+      text: isDark
+        ? "text-zinc-400"
+        : "text-zinc-500",
     },
   }[status];
 
@@ -327,7 +335,7 @@ function applyCurrent() {
 
           <div className="flex items-center gap-2.5">
 
-            {/* ONLINE */}
+            {/* STATUS INDICATOR - Real telemetry based */}
 
             <div
               className={`flex items-center gap-2 rounded-full border px-3.5 py-2 ${
@@ -337,23 +345,30 @@ function applyCurrent() {
               }`}
             >
               <span
-                className={`h-1.5 w-1.5 rounded-full ${statusConfig.dot} ${
-                  isConnected
-                    ? "shadow-[0_0_8px_rgba(52,211,153,0.7)]"
+                className={`h-2 w-2 rounded-full ${statusConfig.dot} ${
+                  status === "charging" || status === "online"
+                    ? "animate-pulse shadow-lg"
                     : ""
-                }`}
+                } transition-all`}
+                style={
+                  status === "charging" || status === "online"
+                    ? {
+                        boxShadow: `0 0 8px ${
+                          status === "charging"
+                            ? "rgba(34, 211, 238, 0.7)"
+                            : "rgba(16, 185, 129, 0.7)"
+                        }`,
+                      }
+                    : {}
+                }
               />
 
               <span
                 className={`text-[9px] font-medium tracking-[0.2em] ${
-                  isDark
-                    ? "text-zinc-500"
-                    : "text-zinc-500"
+                  statusConfig.text
                 }`}
               >
-                {isConnected
-                  ? "ONLINE"
-                  : "OFFLINE"}
+                {statusConfig.label}
               </span>
             </div>
 
@@ -720,7 +735,75 @@ function applyCurrent() {
 }
 
 /* ==========================================================================
-   STATUS
+   STATUS - Real telemetry based
+   ========================================================================== */
+
+function getHomeStatus(
+  operationState:
+    | "waiting_for_vehicle"
+    | "connected_no_charge"
+    | "charging"
+    | "charging_error"
+    | "charging_forbidden"
+    | "low_voltage"
+    | "communication_error"
+    | "leakage_detected"
+    | "overcurrent"
+    | "station_offline"
+    | "unknown",
+  connected: boolean,
+): "online" | "charging" | "waiting" | "error" | "offline" {
+  /*
+   * If not connected - always offline
+   */
+  if (!connected) {
+    return "offline";
+  }
+
+  /*
+   * If charging - show charging status
+   */
+  if (operationState === "charging") {
+    return "charging";
+  }
+
+  /*
+   * Any error state - show error
+   */
+  const errorStates = new Set([
+    "charging_error",
+    "charging_forbidden",
+    "low_voltage",
+    "communication_error",
+    "leakage_detected",
+    "overcurrent",
+    "station_offline",
+  ]);
+
+  if (errorStates.has(operationState)) {
+    return "error";
+  }
+
+  /*
+   * Connected but waiting for vehicle - show waiting
+   */
+  if (
+    operationState ===
+      "waiting_for_vehicle" ||
+    operationState ===
+      "connected_no_charge"
+  ) {
+    return "waiting";
+  }
+
+  /*
+   * Default: online (connected and ready)
+   */
+  return "online";
+}
+
+/* ==========================================================================
+   FORMATTING
    ========================================================================== */
 
 function formatDuration(
@@ -772,73 +855,11 @@ function formatSessionStart(
   );
 }
 
-function getHomeStatus(
-  operationState:
-    | "waiting_for_vehicle"
-    | "connected_no_charge"
-    | "charging"
-    | "charging_error"
-    | "charging_forbidden"
-    | "low_voltage"
-    | "communication_error"
-    | "leakage_detected"
-    | "overcurrent"
-    | "station_offline"
-    | "unknown",
-  connected: boolean,
-) {
-  if (
-    operationState ===
-    "charging"
-  ) {
-    return "charging" as const;
-  }
-
-  if (
-    operationState ===
-      "charging_error" ||
-    operationState ===
-      "charging_forbidden" ||
-    operationState ===
-      "low_voltage" ||
-    operationState ===
-      "communication_error" ||
-    operationState ===
-      "leakage_detected" ||
-    operationState ===
-      "overcurrent" ||
-    operationState ===
-      "station_offline"
-  ) {
-    return "error" as const;
-  }
-
-  if (
-    operationState ===
-      "connected_no_charge" &&
-    connected
-  ) {
-    return "connected" as const;
-  }
-
-  if (
-    operationState ===
-      "waiting_for_vehicle" &&
-    connected
-  ) {
-    return "waiting" as const;
-  }
-
-  if (!connected) {
-    return "waiting" as const;
-  }
-
-  return "waiting" as const;
-}
-
 /* ==========================================================================
    CURRENT PICKER
    ========================================================================== */
+
+type ApplyState = "idle" | "applying";
 
 function CurrentPicker({
   selectedCurrent,
