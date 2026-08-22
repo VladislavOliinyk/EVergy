@@ -768,7 +768,8 @@ function getHomeStatus(
   }
 
   /*
-   * Any error state - show error
+   * Any actual error state - show error
+   * (but NOT waiting_for_vehicle or connected_no_charge)
    */
   const errorStates = new Set([
     "charging_error",
@@ -785,7 +786,8 @@ function getHomeStatus(
   }
 
   /*
-   * Connected but waiting for vehicle - show waiting
+   * Connected but waiting for vehicle or no charge happening
+   * Show waiting status
    */
   if (
     operationState ===
@@ -794,6 +796,13 @@ function getHomeStatus(
       "connected_no_charge"
   ) {
     return "waiting";
+  }
+
+  /*
+   * Unknown state - show as online (safe fallback)
+   */
+  if (operationState === "unknown") {
+    return "online";
   }
 
   /*
