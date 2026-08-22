@@ -51,6 +51,23 @@ const {
   const currentLimit =
     telemetry.chargingCurrentTargetAmps;
 
+  /*
+   * Actual charging current from telemetry.
+   *
+   * Used to determine if charging is actually happening.
+   */
+  const actualCurrent =
+    telemetry.currentAmps;
+
+  /*
+   * Determine if we should show START or STOP button.
+   *
+   * If actual current > 0, show STOP button.
+   * If actual current === 0 or null, show START button.
+   */
+  const shouldShowStop =
+    actualCurrent !== null && actualCurrent > 0;
+
   /* ---------------------------------------------------------------------- */
   /* Theme                                                                  */
   /* ---------------------------------------------------------------------- */
@@ -248,9 +265,9 @@ function applyCurrent() {
       ? telemetry.energyKwh.toFixed(2)
       : "—";
 
-  const actualCurrent =
-    telemetry.currentAmps !== null
-      ? telemetry.currentAmps.toFixed(1)
+  const actualCurrentFormatted =
+    actualCurrent !== null
+      ? actualCurrent.toFixed(1)
       : "—";
 
   const targetCurrent =
@@ -495,7 +512,7 @@ function applyCurrent() {
                       : "text-zinc-500"
                   }
                 >
-                  {actualCurrent} A
+                  {actualCurrentFormatted} A
                 </span>
               </div>
 
@@ -600,12 +617,72 @@ function applyCurrent() {
         </section>
 
         {/* ================================================================== */}
+        {/* START / STOP BUTTON (BELOW CURRENT SELECTOR)                       */}
+        {/* ================================================================== */}
+
+        <div className="flex justify-center mt-6">
+          {shouldShowStop ? (
+            /* STOP BUTTON - Red */
+            <button
+              type="button"
+              onClick={handleStopCharging}
+              disabled={stopState === "stopping"}
+              aria-label="Stop charging"
+              className={`flex items-center gap-3 px-8 py-3.5 rounded-full font-semibold tracking-[0.12em] text-sm transition-all duration-300 ${
+                stopState === "stopping"
+                  ? "cursor-wait opacity-60"
+                  : "cursor-pointer hover:scale-110 active:scale-95"
+              } ${
+                isDark
+                  ? "bg-red-600/40 border border-red-500/70 text-red-300 hover:bg-red-600/50 hover:border-red-500/90 shadow-[0_0_25px_rgba(220,38,38,0.3)]"
+                  : "bg-red-600/30 border border-red-600/60 text-red-600 hover:bg-red-600/40 hover:border-red-600/80 shadow-[0_0_20px_rgba(220,38,38,0.25)]"
+              }`}
+            >
+              <span className="text-lg">
+                ■
+              </span>
+              <span>
+                {stopState === "stopping"
+                  ? "STOPPING…"
+                  : "STOP"}
+              </span>
+            </button>
+          ) : (
+            /* START BUTTON - Cyan (Energy flowing) */
+            <button
+              type="button"
+              onClick={openCurrentPicker}
+              disabled={applyState === "applying"}
+              aria-label="Start charging"
+              className={`flex items-center gap-3 px-8 py-3.5 rounded-full font-semibold tracking-[0.12em] text-sm transition-all duration-300 ${
+                applyState === "applying"
+                  ? "cursor-wait opacity-60"
+                  : "cursor-pointer hover:scale-110 active:scale-95"
+              } ${
+                isDark
+                  ? "bg-cyan-500/40 border border-cyan-400/70 text-cyan-300 hover:bg-cyan-500/50 hover:border-cyan-400/90 shadow-[0_0_25px_rgba(34,211,238,0.3)]"
+                  : "bg-cyan-500/30 border border-cyan-600/60 text-cyan-600 hover:bg-cyan-500/40 hover:border-cyan-600/80 shadow-[0_0_20px_rgba(34,211,238,0.25)]"
+              }`}
+            >
+              <span className="text-lg">
+                ▶
+              </span>
+              <span>
+                {applyState === "applying"
+                  ? "STARTING…"
+                  : "START"}
+              </span>
+            </button>
+          )}
+        </div>
+
+        {/* ================================================================== */}
         {/* ERROR                                                               */}
         {/* ================================================================== */}
 
         {lastError && (
           <div
-            className={`mb-3 rounded-xl border px-4 py-2 text-center text-[9px] ${
+            className={`mt-4 rounded-xl border px-4 py-2 text-center text-[9px] ${
               isDark
                 ? "border-red-400/15 bg-red-400/[0.04] text-red-300/70"
                 : "border-red-500/15 bg-red-500/[0.04] text-red-600/70"
@@ -614,53 +691,6 @@ function applyCurrent() {
             Connection error
           </div>
         )}
-
-        {/* ================================================================== */}
-        {/* CONTROL BUTTONS                                                    */}
-        {/* ================================================================== */}
-
-        <div className="flex gap-3 justify-center">
-          
-          {/* START BUTTON */}
-          <button
-            type="button"
-            onClick={openCurrentPicker}
-            disabled={applyState === "applying"}
-            aria-label="Start charging"
-            className={`flex items-center gap-2 px-6 py-3.5 rounded-2xl font-semibold tracking-[0.1em] text-sm transition-all duration-300 ${
-              applyState === "applying"
-                ? "cursor-wait opacity-60"
-                : "cursor-pointer hover:scale-105 active:scale-95"
-            } ${
-              isDark
-                ? "bg-emerald-500/30 border border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/40 hover:border-emerald-400/60"
-                : "bg-emerald-500/20 border border-emerald-600/30 text-emerald-600 hover:bg-emerald-500/30 hover:border-emerald-600/50"
-            }`}
-          >
-            <span className="text-lg">▶</span>
-            START
-          </button>
-
-          {/* STOP BUTTON */}
-          <button
-            type="button"
-            onClick={handleStopCharging}
-            disabled={stopState === "stopping"}
-            aria-label="Stop charging"
-            className={`flex items-center gap-2 px-6 py-3.5 rounded-2xl font-semibold tracking-[0.1em] text-sm transition-all duration-300 ${
-              stopState === "stopping"
-                ? "cursor-wait opacity-60"
-                : "cursor-pointer hover:scale-105 active:scale-95"
-            } ${
-              isDark
-                ? "bg-red-500/30 border border-red-400/40 text-red-300 hover:bg-red-500/40 hover:border-red-400/60"
-                : "bg-red-500/20 border border-red-600/30 text-red-600 hover:bg-red-500/30 hover:border-red-600/50"
-            }`}
-          >
-            <span className="text-lg">■</span>
-            {stopState === "stopping" ? "STOPPING…" : "STOP"}
-          </button>
-        </div>
       </div>
 
       {/* CURRENT PICKER */}
@@ -676,6 +706,7 @@ function applyCurrent() {
             setSelectedCurrent
           }
           applyState={applyState}
+          setApplyState={setApplyState}
           onApply={applyCurrent}
           onClose={closeCurrentPicker}
           dark={isDark}
@@ -813,6 +844,7 @@ function CurrentPicker({
   selectedCurrent,
   setSelectedCurrent,
   applyState,
+  setApplyState,
   onApply,
   onClose,
   dark,
@@ -823,6 +855,9 @@ function CurrentPicker({
     value: number,
   ) => void;
   applyState: ApplyState;
+  setApplyState: (
+    value: ApplyState,
+  ) => void;
   onApply: () => void;
   onClose: () => void;
   dark: boolean;
