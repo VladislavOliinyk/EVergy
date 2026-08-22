@@ -19,6 +19,7 @@ const {
   lastError,
   sessionDurationSeconds,
   sessionStartedAt,
+  lastCompletedSession,
   startCharging,
   stopCharging,
 } = useChargerTelemetry();
@@ -107,6 +108,7 @@ const {
     getHomeStatus(
       telemetry.operationState,
       isConnected,
+      actualCurrent,
     );
 
   const statusConfig = {
@@ -196,6 +198,7 @@ function applyCurrent() {
     );
 
     setCurrentPickerOpen(false);
+    setApplyState("idle");
   } catch (error) {
     console.error(
       "[EVergy] Failed to start charging",
@@ -284,15 +287,29 @@ function applyCurrent() {
       : "—";
 
        const session =
-  formatDuration(
-    sessionDurationSeconds,
-      );
+    formatDuration(
+      sessionDurationSeconds,
+    );
 
-       const sessionSince =
-  formatSessionStart(
-    sessionStartedAt,
-  );
-  
+  const sessionSince =
+    formatSessionStart(
+      sessionStartedAt,
+    );
+
+  const lastSessionDuration =
+    lastCompletedSession?.durationSeconds ??
+    null;
+
+  const lastSessionDisplay =
+    isCharging
+      ? session
+      : lastSessionDuration !== null &&
+          lastSessionDuration > 0
+        ? formatDuration(
+            lastSessionDuration,
+          )
+        : "—";
+
   return (
     <main
       className={`min-h-screen transition-colors duration-500 ${
@@ -430,11 +447,7 @@ function applyCurrent() {
 <CornerMetric
   position="bottom-right"
   label={isCharging ? "SESSION" : "LAST SESSION"}
-  value={
-    sessionDurationSeconds > 0
-      ? session
-      : "—"
-  }
+  value={lastSessionDisplay}
   dark={isDark}
 />
 
@@ -752,6 +765,7 @@ function getHomeStatus(
     | "station_offline"
     | "unknown",
   connected: boolean,
+  actualCurrent: number | null,
 ): "online" | "charging" | "waiting" | "error" | "offline" {
   /*
    * If not connected - always offline
@@ -761,19 +775,36 @@ function getHomeStatus(
   }
 
   /*
-   * If charging - show charging status
+   * Real charging current has priority over a stale or noisy status code.
    */
-  if (operationState === "charging") {
+  if (actualCurrent !== null && actualCurrent > 0) {
     return "charging";
   }
 
   /*
-   * Any actual error state - show error
-   * (but NOT waiting_for_vehicle or connected_no_charge)
+   * When the charger is online but idle, the device is effectively waiting
+   * for the user to start charging, even if a vendor status code is a bit noisy.
+   */
+  if (
+    operationState === "charging" ||
+    operationState === "waiting_for_vehicle" ||
+    operationState === "connected_no_charge" ||
+    operationState === "unknown"
+  ) {
+    return "waiting";
+  }
+
+  if (
+    operationState === "charging_forbidden"
+  ) {
+    return "waiting";
+  }
+
+  /*
+   * Any actual fault state should stay error.
    */
   const errorStates = new Set([
     "charging_error",
-    "charging_forbidden",
     "low_voltage",
     "communication_error",
     "leakage_detected",
@@ -785,30 +816,7 @@ function getHomeStatus(
     return "error";
   }
 
-  /*
-   * Connected but waiting for vehicle or no charge happening
-   * Show waiting status
-   */
-  if (
-    operationState ===
-      "waiting_for_vehicle" ||
-    operationState ===
-      "connected_no_charge"
-  ) {
-    return "waiting";
-  }
-
-  /*
-   * Unknown state - show as online (safe fallback)
-   */
-  if (operationState === "unknown") {
-    return "online";
-  }
-
-  /*
-   * Default: online (connected and ready)
-   */
-  return "online";
+  return "waiting";
 }
 
 /* ==========================================================================
@@ -867,8 +875,6 @@ function formatSessionStart(
 /* ==========================================================================
    CURRENT PICKER
    ========================================================================== */
-
-type ApplyState = "idle" | "applying";
 
 function CurrentPicker({
   selectedCurrent,

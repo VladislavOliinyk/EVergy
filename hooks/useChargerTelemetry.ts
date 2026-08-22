@@ -23,6 +23,7 @@ import {
   finishLocalSession,
   getActiveSession,
   getCurrentSessionDurationSeconds,
+  getLastCompletedSession,
   startLocalSession,
   touchLocalSession,
 } from "../lib/sessionStorage";
@@ -80,6 +81,15 @@ export function useChargerTelemetry(
     setSessionStartedAt,
   ] = useState<number | null>(null);
 
+  const [
+    lastCompletedSession,
+    setLastCompletedSession,
+  ] = useState<
+    ReturnType<
+      typeof getLastCompletedSession
+    >
+  >(null);
+
   const clientRef =
     useRef<ElectroSWebSocket | null>(null);
 
@@ -129,6 +139,10 @@ export function useChargerTelemetry(
         setSessionStartedAt(null);
         setSessionDurationSeconds(0);
       }
+
+      setLastCompletedSession(
+        getLastCompletedSession(),
+      );
     } catch (error) {
       console.error(
         "[EVergy] Failed to restore local charging session",
@@ -137,6 +151,7 @@ export function useChargerTelemetry(
 
       setSessionStartedAt(null);
       setSessionDurationSeconds(0);
+      setLastCompletedSession(null);
     }
 
     sessionInitializedRef.current = true;
@@ -351,6 +366,10 @@ export function useChargerTelemetry(
                         parsedTelemetry.energyKwh,
                     });
 
+                  setLastCompletedSession(
+                    finishedSession,
+                  );
+
                   console.log(
                     "[EVergy] Charging session finished",
                     {
@@ -522,6 +541,8 @@ export function useChargerTelemetry(
     sessionDurationSeconds,
 
     sessionStartedAt,
+
+    lastCompletedSession,
 
     startCharging,
 

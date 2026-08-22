@@ -162,6 +162,20 @@ export function getLocalSessions():
   }
 }
 
+export function getLastCompletedSession():
+  LocalChargingSession | null {
+  const sessions =
+    getLocalSessions();
+
+  if (sessions.length === 0) {
+    return null;
+  }
+
+  return sessions[
+    sessions.length - 1
+  ];
+}
+
 function saveLocalSessions(
   sessions: LocalChargingSession[],
 ) {

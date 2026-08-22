@@ -10,13 +10,20 @@ const ELECTROS_STATUS_MAP: Record<number, ChargerOperationState> = {
   1: "connected_no_charge",
   2: "charging",
   3: "charging_error",
-  4: "charging_forbidden",
+  4: "connected_no_charge",
   5: "low_voltage",
   6: "communication_error",
   7: "station_offline",
+  8: "waiting_for_vehicle",
+  9: "connected_no_charge",
+  10: "connected_no_charge",
+  11: "charging",
+  12: "waiting_for_vehicle",
+  13: "connected_no_charge",
   16: "leakage_detected",
   32: "overcurrent",
   77: "station_offline",
+  99: "waiting_for_vehicle",
 };
 
 function parseNumber(value: string | undefined): number | undefined {
@@ -36,7 +43,10 @@ function getOperationState(
     return "unknown";
   }
 
-  return ELECTROS_STATUS_MAP[statusCode] ?? "unknown";
+  return (
+    ELECTROS_STATUS_MAP[statusCode] ??
+    "unknown"
+  );
 }
 
 /**
