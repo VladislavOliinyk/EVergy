@@ -41,7 +41,7 @@ const {
     useState<"idle" | "stopping">("idle");
 
   const [theme, setTheme] =
-    useState<Theme>("dark");
+    useState<Theme>(() => typeof window !== "undefined" && window.localStorage.getItem("evergy-theme") === "light" ? "light" : "dark");
 
   const [themeReady, setThemeReady] =
     useState(false);
