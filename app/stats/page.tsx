@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useChargerTelemetry } from "../../hooks/useChargerTelemetry";
+import { BottomNav } from "../../components/BottomNav";
 
 
 type Theme = "dark" | "light";
@@ -36,6 +37,10 @@ export default function StatsPage() {
 
   const isDark =
     theme === "dark";
+
+  const stationIsOnline =
+    isConnected &&
+    telemetry.operationState !== "station_offline";
 
   /*
    * ------------------------------------------------------------------------
@@ -148,7 +153,12 @@ const recentHistory =
   useMemo(
     () =>
       [...validSessions]
-        .reverse()
+        .sort(
+          (left, right) =>
+            getHistorySortKey(right).localeCompare(
+              getHistorySortKey(left),
+            ),
+        )
         .slice(0, 10),
     [validSessions],
   );
@@ -167,7 +177,7 @@ const recentHistory =
           : "bg-[#f4f6f7] text-[#111517]"
       }`}
     >
-      <div className="mx-auto min-h-screen w-full max-w-[760px] px-5 pb-8 pt-6 sm:px-8">
+      <div className="mx-auto min-h-screen w-full max-w-[760px] px-5 pb-24 pt-6 sm:px-8">
 
         {/* ================================================================ */}
         {/* HEADER                                                           */}
@@ -212,9 +222,9 @@ const recentHistory =
             >
               <span
                 className={`h-1.5 w-1.5 rounded-full ${
-                  isConnected
+                  stationIsOnline
                     ? "bg-emerald-400"
-                    : "bg-red-400"
+                    : "bg-zinc-500"
                 }`}
               />
 
@@ -225,7 +235,7 @@ const recentHistory =
                     : "text-zinc-500"
                 }`}
               >
-                {isConnected
+                {stationIsOnline
                   ? "ONLINE"
                   : "OFFLINE"}
               </span>
@@ -615,6 +625,8 @@ const recentHistory =
         </div>
 
       </div>
+
+      <BottomNav dark={isDark} />
     </main>
   );
 }
@@ -704,4 +716,19 @@ function formatDate(
   }
 
   return date;
+}
+
+function getHistorySortKey(
+  entry: {
+    date: string;
+    time: string;
+  },
+) {
+  const [day = "00", month = "00"] =
+    entry.date.split(".");
+
+  return `${month.padStart(2, "0")}${day.padStart(
+    2,
+    "0",
+  )} ${entry.time}`;
 }

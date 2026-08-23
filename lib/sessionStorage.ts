@@ -171,9 +171,13 @@ export function getLastCompletedSession():
     return null;
   }
 
-  return sessions[
-    sessions.length - 1
-  ];
+  return sessions.reduce(
+    (latest, session) =>
+      (session.endedAt ?? -Infinity) >
+          (latest.endedAt ?? -Infinity)
+        ? session
+        : latest,
+  );
 }
 
 function saveLocalSessions(

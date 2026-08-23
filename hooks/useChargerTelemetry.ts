@@ -335,8 +335,10 @@ export function useChargerTelemetry(
                   "charging_error",
                   "charging_forbidden",
                   "low_voltage",
+                  "communication_error",
                   "leakage_detected",
                   "overcurrent",
+                  "station_offline",
                 ]);
 
               const shouldFinishSession =

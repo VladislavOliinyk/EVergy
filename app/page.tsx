@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { useChargerTelemetry } from "../hooks/useChargerTelemetry";
+import { BottomNav } from "../components/BottomNav";
 
 type Theme = "dark" | "light";
 type ApplyState = "idle" | "applying";
@@ -67,7 +68,16 @@ const {
    * If actual current === 0 or null, show START button.
    */
   const shouldShowStop =
-    actualCurrent !== null && actualCurrent > 0;
+    isConnected &&
+    telemetry.operationState !== "station_offline" &&
+    actualCurrent !== null &&
+    actualCurrent > 0;
+
+  const displayedActualCurrent =
+    isConnected &&
+    telemetry.operationState !== "station_offline"
+      ? actualCurrent
+      : null;
 
   /* ---------------------------------------------------------------------- */
   /* Theme                                                                  */
@@ -277,8 +287,8 @@ function applyCurrent() {
       : "—";
 
   const actualCurrentFormatted =
-    actualCurrent !== null
-      ? actualCurrent.toFixed(1)
+    displayedActualCurrent !== null
+      ? displayedActualCurrent.toFixed(1)
       : "—";
 
   const targetCurrent =
@@ -318,7 +328,7 @@ function applyCurrent() {
           : "bg-[#f4f6f7] text-[#111517]"
       }`}
     >
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 pb-5 pt-5 sm:px-8 sm:pt-7">
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 pb-24 pt-5 sm:px-8 sm:pt-7">
 
         {/* ================================================================== */}
         {/* HEADER                                                             */}
@@ -721,6 +731,8 @@ function applyCurrent() {
         )}
       </div>
 
+      <BottomNav dark={isDark} />
+
       {/* CURRENT PICKER */}
 
       {currentPickerOpen && (
@@ -739,7 +751,7 @@ function applyCurrent() {
           onClose={closeCurrentPicker}
           dark={isDark}
           actualCurrent={
-            telemetry.currentAmps
+            displayedActualCurrent
           }
         />
       )}
@@ -771,6 +783,10 @@ function getHomeStatus(
    * If not connected - always offline
    */
   if (!connected) {
+    return "offline";
+  }
+
+  if (operationState === "station_offline") {
     return "offline";
   }
 
