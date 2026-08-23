@@ -6,6 +6,7 @@ import { useChargerTelemetry } from "../hooks/useChargerTelemetry";
 import { BottomNav } from "../components/BottomNav";
 import { SetupModal } from "../components/SetupModal";
 import { getActiveChargerId } from "../lib/appStorage";
+import { getLanguage, translations, type Language } from "../lib/i18n";
 
 type Theme = "dark" | "light";
 type ApplyState = "idle" | "applying";
@@ -45,6 +46,8 @@ const {
   const [themeReady, setThemeReady] =
     useState(false);
   const [setupRequired, setSetupRequired] = useState(false);
+  const [language, setLanguage] = useState<Language>("en");
+  const t = translations[language];
 
   const isDark = theme === "dark";
 
@@ -88,6 +91,10 @@ const {
 
   useEffect(() => {
     setSetupRequired(!getActiveChargerId());
+    setLanguage(getLanguage());
+    const syncLanguage = () => setLanguage(getLanguage());
+    window.addEventListener("evergy:language-change", syncLanguage);
+    return () => window.removeEventListener("evergy:language-change", syncLanguage);
   }, []);
 
   useEffect(() => {
@@ -131,7 +138,7 @@ const {
 
   const statusConfig = {
     online: {
-      label: "ONLINE",
+      label: t.online,
       dot: "bg-emerald-400",
       text: isDark
         ? "text-emerald-300"
@@ -139,7 +146,7 @@ const {
     },
 
     charging: {
-      label: "CHARGING",
+      label: t.charging,
       dot: "bg-cyan-400",
       text: isDark
         ? "text-cyan-300"
@@ -147,7 +154,7 @@ const {
     },
 
     waiting: {
-      label: "WAITING",
+      label: t.waiting,
       dot: "bg-yellow-400",
       text: isDark
         ? "text-yellow-300"
@@ -155,13 +162,13 @@ const {
     },
 
     error: {
-      label: "ERROR",
+      label: t.error,
       dot: "bg-red-500",
       text: "text-red-500",
     },
 
     offline: {
-      label: "OFFLINE",
+      label: t.offline,
       dot: "bg-zinc-500",
       text: isDark
         ? "text-zinc-400"
@@ -365,7 +372,7 @@ function applyCurrent() {
                   : "text-zinc-400"
               }`}
             >
-              ENERGY MANAGER
+              {language === "uk" ? "МЕНЕДЖЕР ЕНЕРГІЇ" : "ENERGY MANAGER"}
             </div>
           </div>
 
@@ -447,7 +454,7 @@ function applyCurrent() {
 
             <CornerMetric
               position="top-left"
-              label="VOLTAGE"
+              label={t.voltage}
               value={voltage}
               unit="V"
               dark={isDark}
@@ -456,7 +463,7 @@ function applyCurrent() {
             {/* POWER */}
 <CornerMetric
   position="top-right"
-  label="POWER"
+  label={t.power}
   value={power}
   unit="kW"
   dark={isDark}
@@ -465,7 +472,7 @@ function applyCurrent() {
 {/* SESSION */}
 <CornerMetric
   position="bottom-right"
-  label={isCharging ? "SESSION" : "LAST SESSION"}
+  label={isCharging ? t.session : t.lastSession}
   value={lastSessionDisplay}
   dark={isDark}
 />
@@ -691,7 +698,7 @@ function applyCurrent() {
               <span>
                 {stopState === "stopping"
                   ? "STOPPING…"
-                  : "STOP"}
+                  : t.stop}
               </span>
             </button>
           ) : (
@@ -717,7 +724,7 @@ function applyCurrent() {
               <span>
                 {applyState === "applying"
                   ? "STARTING…"
-                  : "START"}
+                  : t.start}
               </span>
             </button>
           )}
@@ -735,7 +742,7 @@ function applyCurrent() {
                 : "border-red-500/15 bg-red-500/[0.04] text-red-600/70"
             }`}
           >
-            Connection error
+            {language === "uk" ? "Помилка з’єднання" : "Connection error"}
           </div>
         )}
       </div>
@@ -758,6 +765,7 @@ function applyCurrent() {
           setApplyState={setApplyState}
           onApply={applyCurrent}
           onClose={closeCurrentPicker}
+          language={language}
           dark={isDark}
           actualCurrent={
             displayedActualCurrent
@@ -910,6 +918,7 @@ function CurrentPicker({
   onClose,
   dark,
   actualCurrent,
+  language,
 }: {
   selectedCurrent: number;
   setSelectedCurrent: (
@@ -923,7 +932,9 @@ function CurrentPicker({
   onClose: () => void;
   dark: boolean;
   actualCurrent: number | null;
+  language: Language;
 }) {
+  const t = translations[language];
   const listRef =
     useRef<HTMLDivElement>(null);
 
@@ -954,13 +965,13 @@ function CurrentPicker({
       className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
       role="dialog"
       aria-modal="true"
-      aria-label="Charging current"
+      aria-label={language === "uk" ? "Струм заряджання" : "Charging current"}
     >
       {/* Backdrop */}
 
       <button
         type="button"
-        aria-label="Close current selector"
+        aria-label={language === "uk" ? "Закрити вибір струму" : "Close current selector"}
         onClick={onClose}
         disabled={
           applyState === "applying"
@@ -1000,7 +1011,7 @@ function CurrentPicker({
                 : "text-zinc-500"
             }`}
           >
-            CHARGING CURRENT
+            {language === "uk" ? "СТРУМ ЗАРЯДЖАННЯ" : "CHARGING CURRENT"}
           </div>
 
           <div
@@ -1010,7 +1021,7 @@ function CurrentPicker({
                 : "text-zinc-400"
             }`}
           >
-            SELECT CURRENT LIMIT
+            {language === "uk" ? "ОБЕРІТЬ ОБМЕЖЕННЯ СТРУМУ" : "SELECT CURRENT LIMIT"}
           </div>
         </div>
 
@@ -1147,8 +1158,8 @@ function CurrentPicker({
         >
           {applyState ===
           "applying"
-            ? "APPLYING…"
-            : "APPLY"}
+            ? (language === "uk" ? "ЗАСТОСУВАННЯ…" : "APPLYING…")
+            : t.apply}
         </button>
 
         {/* Actual telemetry */}
@@ -1160,7 +1171,7 @@ function CurrentPicker({
               : "text-zinc-400"
           }`}
         >
-          ACTUAL CURRENT{" "}
+          {language === "uk" ? "ФАКТИЧНИЙ СТРУМ" : "ACTUAL CURRENT"}{" "}
           <span
             className={
               dark

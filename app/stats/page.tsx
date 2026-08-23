@@ -7,6 +7,7 @@ import { BottomNav } from "../../components/BottomNav";
 import { getLocalSessions, type LocalChargingSession } from "../../lib/sessionStorage";
 import { getCarProfile } from "../../lib/appStorage";
 import { estimatedRange, sessionCost } from "../../lib/chargingCalculations";
+import { getLanguage, translations, type Language } from "../../lib/i18n";
 
 
 type Theme = "dark" | "light";
@@ -25,6 +26,7 @@ const MONTH_NAMES = [
   "NOV",
   "DEC",
 ];
+const MONTH_NAMES_UK = ["СІЧ", "ЛЮТ", "БЕР", "КВІ", "ТРА", "ЧЕР", "ЛИП", "СЕР", "ВЕР", "ЖОВ", "ЛИС", "ГРУ"];
 
 export default function StatsPage() {
   const {
@@ -38,6 +40,9 @@ export default function StatsPage() {
   const [themeReady, setThemeReady] =
     useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [language, setLanguage] = useState<Language>("en");
+  const t = translations[language];
+  const monthNames = language === "uk" ? MONTH_NAMES_UK : MONTH_NAMES;
   const [localSessions] = useState<LocalChargingSession[]>(() => getLocalSessions());
   const [car, setCar] = useState(() => getCarProfile());
   const localEnergy = hydrated ? localSessions.reduce((sum, s) => sum + (s.energyKwh ?? 0), 0) : 0;
@@ -47,6 +52,10 @@ export default function StatsPage() {
   useEffect(() => {
     setCar(getCarProfile());
     setHydrated(true);
+    setLanguage(getLanguage());
+    const syncLanguage = () => setLanguage(getLanguage());
+    window.addEventListener("evergy:language-change", syncLanguage);
+    return () => window.removeEventListener("evergy:language-change", syncLanguage);
   }, []);
 
   const isDark =
@@ -219,7 +228,7 @@ const recentHistory =
                   : "text-zinc-400"
               }`}
             >
-              ENERGY MANAGER
+              {language === "uk" ? "МЕНЕДЖЕР ЕНЕРГІЇ" : "ENERGY MANAGER"}
             </div>
           </div>
 
@@ -250,8 +259,8 @@ const recentHistory =
                 }`}
               >
                 {stationIsOnline
-                  ? "ONLINE"
-                  : "OFFLINE"}
+                  ? t.online
+                  : t.offline}
               </span>
             </div>
 
@@ -292,12 +301,12 @@ const recentHistory =
                 : "text-zinc-400"
             }`}
           >
-            ENERGY
+            {t.energy}
           </div>
 
           <div className="mt-1 flex items-end justify-between">
             <h1 className="text-[30px] font-semibold tracking-tight">
-              Statistics
+              {t.statistics}
             </h1>
 
             <div
@@ -307,7 +316,7 @@ const recentHistory =
                   : "text-zinc-400"
               }`}
             >
-              LIVE DATA
+              {language === "uk" ? "ДАНІ НАЖИВО" : "LIVE DATA"}
             </div>
           </div>
         </section>
@@ -333,7 +342,7 @@ const recentHistory =
                     : "text-zinc-400"
                 }`}
               >
-                {MONTH_NAMES[
+                {monthNames[
                   currentMonth
                 ]}
               </div>
@@ -361,7 +370,7 @@ const recentHistory =
                     : "text-zinc-400"
                 }`}
               >
-                ENERGY CONSUMPTION THIS MONTH
+                {language === "uk" ? "СПОЖИВАННЯ ЕНЕРГІЇ ЦЬОГО МІСЯЦЯ" : "ENERGY CONSUMPTION THIS MONTH"}
               </div>
             </div>
 
@@ -390,7 +399,7 @@ const recentHistory =
                     : "text-zinc-400"
                 }`}
               >
-                ENERGY THIS YEAR
+                {language === "uk" ? "ЕНЕРГІЯ ЗА РІК" : "ENERGY THIS YEAR"}
               </div>
 
               <div
@@ -431,7 +440,7 @@ const recentHistory =
 
                   return (
                     <div
-                      key={MONTH_NAMES[index]}
+                      key={monthNames[index]}
                       className="flex h-full flex-1 flex-col justify-end"
                     >
                       <div className="relative flex h-full items-end">
@@ -462,7 +471,7 @@ const recentHistory =
                               : "text-zinc-400"
                         }`}
                       >
-                        {MONTH_NAMES[index]}
+                        {monthNames[index]}
                       </div>
                     </div>
                   );
@@ -479,21 +488,21 @@ const recentHistory =
         <section className="mt-4 grid grid-cols-3 gap-2.5">
 
           <SummaryCard
-            label="YEAR TOTAL"
+            label={t.yearTotal}
             value={yearlyEnergy.toFixed(1)}
             unit="kWh"
             dark={isDark}
           />
 
           <SummaryCard
-            label="SESSIONS"
+            label={t.sessions}
             value={totalSessions.toString()}
             unit=""
             dark={isDark}
           />
 
           <SummaryCard
-            label="AVG SESSION"
+            label={t.avgSession}
             value={averageSession.toFixed(
               2,
             )}
@@ -504,7 +513,7 @@ const recentHistory =
         </section>
 
         <section className="mt-4 grid grid-cols-3 gap-2.5">
-          <SummaryCard label="LOCAL ENERGY" value={localEnergy.toFixed(1)} unit="kWh" dark={isDark} />
+          <SummaryCard label={`${t.energy} / LOCAL`} value={localEnergy.toFixed(1)} unit="kWh" dark={isDark} />
           <SummaryCard label="EST. COST" value={localCost ? localCost.toFixed(0) : "—"} unit={localCost ? car.currency : ""} dark={isDark} />
           <SummaryCard label="EST. RANGE" value={localRange ? localRange.toFixed(0) : "—"} unit={localRange ? "km" : ""} dark={isDark} />
         </section>
@@ -524,11 +533,11 @@ const recentHistory =
                     : "text-zinc-400"
                 }`}
               >
-                CHARGING
+                {language === "uk" ? "ЗАРЯДЖАННЯ" : "CHARGING"}
               </div>
 
               <h2 className="mt-1 text-xl font-semibold tracking-tight">
-                Recent sessions
+                {t.recent}
               </h2>
             </div>
 
@@ -539,7 +548,7 @@ const recentHistory =
                   : "text-zinc-400"
               }`}
             >
-              {totalSessions} TOTAL
+              {totalSessions} {language === "uk" ? "ВСЬОГО" : "TOTAL"}
             </div>
           </div>
 
@@ -559,7 +568,7 @@ const recentHistory =
                     : "text-zinc-400"
                 }`}
               >
-                NO CHARGING HISTORY
+                {t.noHistory}
               </div>
             ) : (
               recentHistory.map(
@@ -619,7 +628,7 @@ const recentHistory =
                             : "text-zinc-400"
                         }`}
                       >
-                        CHARGING SESSION
+                        {language === "uk" ? "СЕСІЯ ЗАРЯДЖАННЯ" : "CHARGING SESSION"}
                       </div>
                     </div>
 
@@ -641,7 +650,7 @@ const recentHistory =
               : "text-zinc-400"
           }`}
         >
-          ELECTROS TELEMETRY
+          {language === "uk" ? "ТЕЛЕМЕТРІЯ ELECTROS" : "ELECTROS TELEMETRY"}
         </div>
 
       </div>
