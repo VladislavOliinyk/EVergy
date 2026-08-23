@@ -20,7 +20,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/stats", label: "STATS", icon: "▥" },
   { href: "/car", label: "MY CAR", icon: "▰" },
   { href: "/settings", label: "SETTINGS", icon: "⚙" },
-  { href: "/diagnostics", label: "DIAGNOSTICS", icon: "◉" },
 ];
 
 export function BottomNav({ dark }: BottomNavProps) {
@@ -39,7 +38,7 @@ export function BottomNav({ dark }: BottomNavProps) {
           : "border-black/[0.06] bg-[#f4f6f7]/90"
       }`}
     >
-      <div className="mx-auto flex min-h-[76px] w-full max-w-[760px] flex-wrap items-center justify-center gap-2 px-3 pb-[env(safe-area-inset-bottom)] pt-2 sm:gap-3 sm:px-5">
+      <div className="mx-auto flex h-[76px] w-full max-w-[760px] items-center justify-center gap-2 px-3 pb-[env(safe-area-inset-bottom)] sm:gap-4 sm:px-5">
         {NAV_ITEMS.map((item) => {
           const isActive =
             item.href === "/"
@@ -51,7 +50,7 @@ export function BottomNav({ dark }: BottomNavProps) {
               key={item.href}
               href={item.href}
               aria-current={isActive ? "page" : undefined}
-              className={`flex h-14 min-w-[108px] flex-col items-center justify-center gap-1 rounded-2xl border transition-all duration-300 ${
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition-all duration-300 ${
                 isActive
                   ? dark
                     ? "border-cyan-400/30 bg-cyan-400/[0.08] text-cyan-300"
@@ -61,11 +60,8 @@ export function BottomNav({ dark }: BottomNavProps) {
                     : "border-transparent text-zinc-400 hover:border-black/[0.06] hover:text-zinc-700"
               }`}
             >
-              <span className="text-xl leading-none" aria-hidden="true">
+              <span className="text-xl leading-none" aria-hidden="true" title={labels[item.label]}>
                 {item.icon}
-              </span>
-              <span className="text-[8px] font-medium tracking-[0.2em]">
-                {labels[item.label]}
               </span>
             </Link>
           );

@@ -3,13 +3,14 @@ export type CarProfile = {
   name: string; batteryKwh: number | null; consumptionKwhPer100Km: number | null;
   reservePercent: number; dayRate: number | null; nightRate: number | null;
   nightStart: string; nightEnd: string; currency: string; splitTariff: boolean;
+  groundingControl: boolean; minimumChargingVoltage: number | null; scheduleStart: string; scheduleEnd: string; scheduleEnabled: boolean;
 };
 
 const CHARGERS_KEY = "evergy-chargers";
 const ACTIVE_KEY = "evergy-active-charger";
 const CAR_KEY = "evergy-car-profile";
 
-const defaultCar: CarProfile = { name: "My CAR", batteryKwh: null, consumptionKwhPer100Km: null, reservePercent: 10, dayRate: null, nightRate: null, nightStart: "23:00", nightEnd: "07:00", currency: "UAH", splitTariff: false };
+const defaultCar: CarProfile = { name: "Моє авто", batteryKwh: null, consumptionKwhPer100Km: null, reservePercent: 10, dayRate: null, nightRate: null, nightStart: "23:00", nightEnd: "07:00", currency: "UAH", splitTariff: false, groundingControl: true, minimumChargingVoltage: null, scheduleStart: "23:00", scheduleEnd: "07:00", scheduleEnabled: false };
 const browser = () => typeof window !== "undefined";
 function read<T>(key: string, fallback: T): T { if (!browser()) return fallback; try { const value = JSON.parse(localStorage.getItem(key) ?? "null"); return value ?? fallback; } catch { return fallback; } }
 function write<T>(key: string, value: T) { if (browser()) localStorage.setItem(key, JSON.stringify(value)); }

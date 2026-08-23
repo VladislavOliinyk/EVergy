@@ -115,6 +115,7 @@ const {
       "evergy-theme",
       theme,
     );
+    window.dispatchEvent(new Event("evergy:theme-change"));
   }, [theme, themeReady]);
 
   /* ---------------------------------------------------------------------- */
