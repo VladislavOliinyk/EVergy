@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useChargerTelemetry } from "../../hooks/useChargerTelemetry";
 import { BottomNav } from "../../components/BottomNav";
+import { getLocalSessions, type LocalChargingSession } from "../../lib/sessionStorage";
+import { getCarProfile } from "../../lib/appStorage";
+import { estimatedRange, sessionCost } from "../../lib/chargingCalculations";
 
 
 type Theme = "dark" | "light";
@@ -34,6 +37,17 @@ export default function StatsPage() {
 
   const [themeReady, setThemeReady] =
     useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  const [localSessions] = useState<LocalChargingSession[]>(() => getLocalSessions());
+  const [car, setCar] = useState(() => getCarProfile());
+  const localEnergy = hydrated ? localSessions.reduce((sum, s) => sum + (s.energyKwh ?? 0), 0) : 0;
+  const localCost = hydrated ? localSessions.reduce((sum, s) => sum + (sessionCost(s.energyKwh, car, s.endedAt) ?? 0), 0) : 0;
+  const localRange = hydrated ? localSessions.reduce((sum, s) => sum + (estimatedRange(s.energyKwh, car) ?? 0), 0) : 0;
+
+  useEffect(() => {
+    setCar(getCarProfile());
+    setHydrated(true);
+  }, []);
 
   const isDark =
     theme === "dark";
@@ -487,6 +501,12 @@ const recentHistory =
             dark={isDark}
           />
 
+        </section>
+
+        <section className="mt-4 grid grid-cols-3 gap-2.5">
+          <SummaryCard label="LOCAL ENERGY" value={localEnergy.toFixed(1)} unit="kWh" dark={isDark} />
+          <SummaryCard label="EST. COST" value={localCost ? localCost.toFixed(0) : "—"} unit={localCost ? car.currency : ""} dark={isDark} />
+          <SummaryCard label="EST. RANGE" value={localRange ? localRange.toFixed(0) : "—"} unit={localRange ? "km" : ""} dark={isDark} />
         </section>
 
         {/* ================================================================ */}

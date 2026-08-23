@@ -16,6 +16,9 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "HOME", icon: "⌂" },
   { href: "/stats", label: "STATS", icon: "▥" },
+  { href: "/car", label: "MY CAR", icon: "▰" },
+  { href: "/settings", label: "SETTINGS", icon: "⚙" },
+  { href: "/diagnostics", label: "DIAGNOSTICS", icon: "◉" },
 ];
 
 export function BottomNav({ dark }: BottomNavProps) {

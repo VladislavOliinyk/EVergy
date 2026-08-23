@@ -1,0 +1,3 @@
+export type ChargerAlert = "start" | "finish" | "error" | "offline" | "recovery";
+const labels: Record<ChargerAlert, string> = { start: "Charging started", finish: "Charging finished", error: "Charging safety error", offline: "Charger is offline", recovery: "Charger connection restored" };
+export function notifyCharger(type: ChargerAlert, detail?: string) { if (typeof window === "undefined") return; const message = detail ? `${labels[type]} — ${detail}` : labels[type]; window.dispatchEvent(new CustomEvent("evergy:notification", { detail: { type, message } })); if (typeof Notification !== "undefined" && Notification.permission === "granted" && document.visibilityState === "visible") new Notification("EVergy", { body: message }); }

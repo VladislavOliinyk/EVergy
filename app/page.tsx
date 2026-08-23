@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { useChargerTelemetry } from "../hooks/useChargerTelemetry";
 import { BottomNav } from "../components/BottomNav";
+import { SetupModal } from "../components/SetupModal";
+import { getActiveChargerId } from "../lib/appStorage";
 
 type Theme = "dark" | "light";
 type ApplyState = "idle" | "applying";
@@ -42,6 +44,7 @@ const {
 
   const [themeReady, setThemeReady] =
     useState(false);
+  const [setupRequired, setSetupRequired] = useState(false);
 
   const isDark = theme === "dark";
 
@@ -82,6 +85,10 @@ const {
   /* ---------------------------------------------------------------------- */
   /* Theme                                                                  */
   /* ---------------------------------------------------------------------- */
+
+  useEffect(() => {
+    setSetupRequired(!getActiveChargerId());
+  }, []);
 
   useEffect(() => {
     const savedTheme =
@@ -328,6 +335,7 @@ function applyCurrent() {
           : "bg-[#f4f6f7] text-[#111517]"
       }`}
     >
+      {setupRequired && <SetupModal onSaved={() => window.location.reload()} />}
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 pb-24 pt-5 sm:px-8 sm:pt-7">
 
         {/* ================================================================== */}

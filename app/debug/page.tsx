@@ -11,7 +11,7 @@ import type {
   ChargerTelemetry,
 } from "../../domain/telemetry";
 
-const DEFAULT_DEVICE_ID = "b8349";
+const DEFAULT_DEVICE_ID = "b8351";
 
 export default function DebugPage() {
   const clientRef = useRef<ElectroSWebSocket | null>(null);

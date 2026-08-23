@@ -27,8 +27,10 @@ import {
   startLocalSession,
   touchLocalSession,
 } from "../lib/sessionStorage";
+import { getActiveChargerId } from "../lib/appStorage";
+import { notifyCharger } from "../lib/notifications";
 
-const DEFAULT_DEVICE_ID = "b8349";
+const DEFAULT_DEVICE_ID = "";
 
 const EMPTY_TELEMETRY: ChargerTelemetry = {
   connectionState: "disconnected",
@@ -61,8 +63,9 @@ const EMPTY_TELEMETRY: ChargerTelemetry = {
 };
 
 export function useChargerTelemetry(
-  deviceId: string = DEFAULT_DEVICE_ID,
+  deviceId?: string,
 ) {
+  const resolvedDeviceId = deviceId ?? getActiveChargerId() ?? DEFAULT_DEVICE_ID;
   const [telemetry, setTelemetry] =
     useState<ChargerTelemetry>(
       EMPTY_TELEMETRY,
@@ -106,6 +109,7 @@ export function useChargerTelemetry(
    */
   const wasChargingRef =
     useRef(false);
+  const previousOperationRef = useRef<string | null>(null);
 
   /*
    * --------------------------------------------------------------
@@ -155,7 +159,7 @@ export function useChargerTelemetry(
     }
 
     sessionInitializedRef.current = true;
-  }, [deviceId]);
+  }, [resolvedDeviceId]);
 
   /*
    * --------------------------------------------------------------
@@ -235,6 +239,14 @@ export function useChargerTelemetry(
             parseElectrosPacket(
               event.data,
             );
+          const previousOperation = previousOperationRef.current;
+          previousOperationRef.current = parsedTelemetry.operationState;
+          if (previousOperation !== parsedTelemetry.operationState) {
+            if (parsedTelemetry.operationState === "charging") notifyCharger("start");
+            if (previousOperation === "charging" && parsedTelemetry.operationState !== "charging") notifyCharger("finish");
+            if (["charging_error", "low_voltage", "communication_error", "leakage_detected", "overcurrent"].includes(parsedTelemetry.operationState)) notifyCharger("error", parsedTelemetry.operationState.replaceAll("_", " "));
+            if (parsedTelemetry.operationState === "station_offline") notifyCharger("offline");
+          }
 
           /*
            * --------------------------------------------------------
@@ -450,7 +462,8 @@ export function useChargerTelemetry(
 
     clientRef.current = client;
 
-    client.connect(deviceId);
+    if (resolvedDeviceId) client.connect(resolvedDeviceId);
+    else setTelemetry((current) => ({ ...current, connectionState: "disconnected" }));
 
     return () => {
       mounted = false;
@@ -459,7 +472,7 @@ export function useChargerTelemetry(
 
       clientRef.current = null;
     };
-  }, [deviceId]);
+  }, [resolvedDeviceId]);
 
   /*
    * --------------------------------------------------------------
