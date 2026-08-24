@@ -61,9 +61,8 @@ export default function StatsPage() {
   const isDark =
     theme === "dark";
 
-  const stationIsOnline =
-    isConnected &&
-    telemetry.operationState !== "station_offline";
+  const stationStatus = getStationStatus(telemetry.operationState, isConnected);
+  const stationIsActive = stationStatus === "charging" || stationStatus === "online";
 
   /*
    * ------------------------------------------------------------------------
@@ -245,7 +244,7 @@ const recentHistory =
             >
               <span
                 className={`h-1.5 w-1.5 rounded-full ${
-                  stationIsOnline
+                  stationIsActive
                     ? "bg-emerald-400"
                     : "bg-zinc-500"
                 }`}
@@ -258,9 +257,15 @@ const recentHistory =
                     : "text-zinc-500"
                 }`}
               >
-                {stationIsOnline
-                  ? t.online
-                  : t.offline}
+                {stationStatus === "charging"
+                  ? t.charging
+                  : stationStatus === "waiting"
+                    ? t.waiting
+                    : stationStatus === "error"
+                      ? t.error
+                      : stationStatus === "online"
+                        ? t.online
+                        : t.offline}
               </span>
             </div>
 
@@ -735,6 +740,17 @@ function getCurrentMonthIndex(
   }
 
   return new Date().getMonth();
+}
+
+function getStationStatus(
+  operationState: string,
+  isConnected: boolean,
+): "online" | "charging" | "waiting" | "error" | "offline" {
+  if (!isConnected || operationState === "station_offline") return "offline";
+  if (operationState === "charging") return "charging";
+  if (["charging_error", "low_voltage", "communication_error", "leakage_detected", "overcurrent"].includes(operationState)) return "error";
+  if (["waiting_for_vehicle", "connected_no_charge", "charging_forbidden", "unknown"].includes(operationState)) return "waiting";
+  return "online";
 }
 
 function formatDate(
