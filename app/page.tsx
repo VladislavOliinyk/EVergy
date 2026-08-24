@@ -46,7 +46,7 @@ const {
   const [themeReady, setThemeReady] =
     useState(false);
   const [setupRequired, setSetupRequired] = useState(false);
-  const [language, setLanguage] = useState<Language>("en");
+  const [language, setLanguage] = useState<Language>(() => typeof window !== "undefined" && window.localStorage.getItem("evergy-language") === "uk" ? "uk" : "en");
   const t = translations[language];
 
   const isDark = theme === "dark";
@@ -532,7 +532,7 @@ function applyCurrent() {
                     : "text-zinc-500"
                 }`}
               >
-                CURRENT
+                {language === "uk" ? "СТРУМ" : "CURRENT"}
               </div>
 
               <div className="mt-1 text-2xl font-semibold tracking-tight">
@@ -558,7 +558,7 @@ function applyCurrent() {
                     : "text-zinc-400"
                 }`}
               >
-                actual{" "}
+                {language === "uk" ? "фактичний" : "actual"}{" "}
                 <span
                   className={
                     isDark
@@ -577,7 +577,7 @@ function applyCurrent() {
                     : "text-cyan-600/50"
                 }`}
               >
-                TAP TO ADJUST
+                {language === "uk" ? "НАТИСНІТЬ ДЛЯ НАЛАШТУВАННЯ" : "TAP TO ADJUST"}
               </div>
             </button>
 
@@ -697,7 +697,7 @@ function applyCurrent() {
               </span>
               <span>
                 {stopState === "stopping"
-                  ? "STOPPING…"
+                  ? (language === "uk" ? "ЗУПИНКА…" : "STOPPING…")
                   : t.stop}
               </span>
             </button>
@@ -723,7 +723,7 @@ function applyCurrent() {
               </span>
               <span>
                 {applyState === "applying"
-                  ? "STARTING…"
+                  ? (language === "uk" ? "ЗАПУСК…" : "STARTING…")
                   : t.start}
               </span>
             </button>
