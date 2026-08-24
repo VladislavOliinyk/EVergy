@@ -514,8 +514,8 @@ const recentHistory =
 
         <section className="mt-4 grid grid-cols-3 gap-2.5">
           <SummaryCard label={`${t.energy} / LOCAL`} value={localEnergy.toFixed(1)} unit="kWh" dark={isDark} />
-          <SummaryCard label="EST. COST" value={localCost ? localCost.toFixed(0) : "—"} unit={localCost ? car.currency : ""} dark={isDark} />
-          <SummaryCard label="EST. RANGE" value={localRange ? localRange.toFixed(0) : "—"} unit={localRange ? "km" : ""} dark={isDark} />
+          <SummaryCard label={t.estimatedCost} value={localCost ? localCost.toFixed(0) : "—"} unit={localCost ? car.currency : ""} dark={isDark} />
+          <SummaryCard label={t.estimatedRange} value={localRange ? localRange.toFixed(0) : "—"} unit={localRange ? "km" : ""} dark={isDark} />
         </section>
 
         {/* ================================================================ */}

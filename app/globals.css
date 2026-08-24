@@ -24,3 +24,13 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Keep native time controls inside their grid columns on narrow viewports. */
+label {
+  min-width: 0;
+}
+
+input[type="time"] {
+  min-width: 0;
+  max-width: 100%;
+}
