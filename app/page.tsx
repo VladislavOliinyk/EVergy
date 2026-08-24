@@ -960,6 +960,24 @@ function CurrentPicker({
     });
   }, [selectedCurrent]);
 
+  function handleCurrentScroll() {
+    const list = listRef.current;
+    if (!list) return;
+
+    const index = Math.max(
+      0,
+      Math.min(
+        CURRENT_OPTIONS.length - 1,
+        Math.round(list.scrollTop / ITEM_HEIGHT),
+      ),
+    );
+
+    const nextCurrent = CURRENT_OPTIONS[index];
+    if (nextCurrent !== selectedCurrent) {
+      setSelectedCurrent(nextCurrent);
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
@@ -1061,6 +1079,7 @@ function CurrentPicker({
 
           <div
             ref={listRef}
+            onScroll={handleCurrentScroll}
             className="relative h-[270px] overflow-y-auto snap-y snap-mandatory [scrollbar-width:none]"
             style={{
               paddingTop:
