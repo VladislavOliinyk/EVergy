@@ -937,6 +937,8 @@ function CurrentPicker({
   const t = translations[language];
   const listRef =
     useRef<HTMLDivElement>(null);
+  const scrollEndTimerRef =
+    useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const ITEM_HEIGHT = 54;
 
@@ -964,18 +966,24 @@ function CurrentPicker({
     const list = listRef.current;
     if (!list) return;
 
-    const index = Math.max(
-      0,
-      Math.min(
-        CURRENT_OPTIONS.length - 1,
-        Math.round(list.scrollTop / ITEM_HEIGHT),
-      ),
-    );
-
-    const nextCurrent = CURRENT_OPTIONS[index];
-    if (nextCurrent !== selectedCurrent) {
-      setSelectedCurrent(nextCurrent);
+    if (scrollEndTimerRef.current) {
+      clearTimeout(scrollEndTimerRef.current);
     }
+
+    scrollEndTimerRef.current = setTimeout(() => {
+      const currentList = listRef.current;
+      if (!currentList) return;
+
+      const index = Math.max(
+        0,
+        Math.min(
+          CURRENT_OPTIONS.length - 1,
+          Math.round(currentList.scrollTop / ITEM_HEIGHT),
+        ),
+      );
+
+      setSelectedCurrent(CURRENT_OPTIONS[index]);
+    }, 120);
   }
 
   return (
@@ -1080,7 +1088,7 @@ function CurrentPicker({
           <div
             ref={listRef}
             onScroll={handleCurrentScroll}
-            className="relative h-[270px] overflow-y-auto snap-y snap-mandatory [scrollbar-width:none]"
+            className="relative h-[270px] overflow-y-auto overscroll-contain [scrollbar-width:none]"
             style={{
               paddingTop:
                 `${ITEM_HEIGHT * 2}px`,
