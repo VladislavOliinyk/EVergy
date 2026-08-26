@@ -7,6 +7,8 @@ import { BottomNav } from "../components/BottomNav";
 import { SetupModal } from "../components/SetupModal";
 import { getActiveChargerId } from "../lib/appStorage";
 import { getLanguage, translations, type Language } from "../lib/i18n";
+import { getCarProfile } from "../lib/appStorage";
+import { estimatedRange, sessionCost } from "../lib/chargingCalculations";
 
 type Theme = "dark" | "light";
 type ApplyState = "idle" | "applying";
@@ -24,6 +26,7 @@ const {
   sessionDurationSeconds,
   sessionStartedAt,
   lastCompletedSession,
+  sessionJustCompleted,
   startCharging,
   stopCharging,
 } = useChargerTelemetry();
@@ -46,8 +49,10 @@ const {
   const [themeReady, setThemeReady] =
     useState(false);
   const [setupRequired, setSetupRequired] = useState(false);
+  const [dismissedSessionId, setDismissedSessionId] = useState<string | null>(null);
   const [language, setLanguage] = useState<Language>(() => typeof window !== "undefined" && window.localStorage.getItem("evergy-language") === "uk" ? "uk" : "en");
   const t = translations[language];
+  const carProfile = getCarProfile();
 
   const isDark = theme === "dark";
 
@@ -749,6 +754,8 @@ function applyCurrent() {
 
       <BottomNav dark={isDark} />
 
+      {sessionJustCompleted && lastCompletedSession && lastCompletedSession.id !== dismissedSessionId && <SessionSummaryModal session={lastCompletedSession} car={carProfile} dark={isDark} language={language} onClose={() => setDismissedSessionId(lastCompletedSession.id)} />}
+
       {/* CURRENT PICKER */}
 
       {currentPickerOpen && (
@@ -774,6 +781,14 @@ function applyCurrent() {
       )}
     </main>
   );
+}
+
+function SessionSummaryModal({ session, car, dark, language, onClose }: { session: { id: string; startedAt: number; endedAt: number | null; durationSeconds: number | null; energyKwh: number | null }; car: ReturnType<typeof getCarProfile>; dark: boolean; language: Language; onClose: () => void }) {
+  const cost = sessionCost(session.energyKwh, car, session.endedAt);
+  const range = estimatedRange(session.energyKwh, car);
+  const uk = language === "uk";
+  const formatDuration = (seconds: number | null) => seconds === null ? "—" : `${Math.floor(seconds / 3600)} ч ${Math.floor(seconds % 3600 / 60)} хв`;
+  return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-5"><div className={`w-full max-w-md rounded-3xl border p-6 shadow-2xl ${dark ? "border-white/10 bg-[#10171b] text-white" : "border-black/10 bg-white text-[#111517]"}`}><div className="text-xs tracking-[.2em] text-cyan-400">{uk ? "ЗАРЯДЖАННЯ ЗАВЕРШЕНО" : "CHARGING COMPLETE"}</div><h2 className="mt-3 text-2xl font-semibold">{uk ? "Підсумок сесії" : "Session summary"}</h2><div className="mt-5 grid grid-cols-2 gap-3">{[[uk ? "Час" : "TIME",formatDuration(session.durationSeconds)],["ENERGY",session.energyKwh === null ? "—" : `${session.energyKwh.toFixed(2)} kWh`],[uk ? "Вартість" : "COST",cost === null ? "—" : `${cost.toFixed(0)} ${car.currency}`],[uk ? "Пробіг" : "RANGE",range === null ? "—" : `${range.toFixed(0)} km`]].map(([label,value])=><div key={label} className={`rounded-2xl p-4 ${dark ? "bg-white/[.05]" : "bg-black/[.04]"}`}><div className="text-[9px] tracking-[.15em] text-zinc-500">{label}</div><div className="mt-2 text-lg font-semibold">{value}</div></div>)}</div><p className="mt-6 text-center text-lg text-cyan-400">{uk ? "Вдалої дороги!" : "Have a safe trip!"}</p><button onClick={onClose} className="mt-5 w-full rounded-xl bg-cyan-400 px-4 py-3 font-semibold text-black">{uk ? "Зрозуміло" : "Done"}</button></div></div>;
 }
 
 /* ==========================================================================

@@ -92,6 +92,7 @@ export function useChargerTelemetry(
       typeof getLastCompletedSession
     >
   >(null);
+  const [sessionJustCompleted, setSessionJustCompleted] = useState(false);
 
   const clientRef =
     useRef<ElectroSWebSocket | null>(null);
@@ -383,6 +384,7 @@ export function useChargerTelemetry(
                   setLastCompletedSession(
                     finishedSession,
                   );
+                  setSessionJustCompleted(true);
 
                   console.log(
                     "[EVergy] Charging session finished",
@@ -558,6 +560,8 @@ export function useChargerTelemetry(
     sessionStartedAt,
 
     lastCompletedSession,
+
+    sessionJustCompleted,
 
     startCharging,
 
