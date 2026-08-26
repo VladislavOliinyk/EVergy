@@ -9,6 +9,8 @@ import { getActiveChargerId } from "../lib/appStorage";
 import { getLanguage, translations, type Language } from "../lib/i18n";
 import { getCarProfile } from "../lib/appStorage";
 import { estimatedRange, sessionCost } from "../lib/chargingCalculations";
+import { useAdaptiveCharging } from "../hooks/useAdaptiveCharging";
+import { AdaptiveCard } from "../components/AdaptiveCard";
 
 type Theme = "dark" | "light";
 type ApplyState = "idle" | "applying";
@@ -44,13 +46,13 @@ const {
     useState<"idle" | "stopping">("idle");
 
   const [theme, setTheme] =
-    useState<Theme>(() => typeof window !== "undefined" && window.localStorage.getItem("evergy-theme") === "light" ? "light" : "dark");
+    useState<Theme>("dark");
 
   const [themeReady, setThemeReady] =
     useState(false);
   const [setupRequired, setSetupRequired] = useState(false);
   const [dismissedSessionId, setDismissedSessionId] = useState<string | null>(null);
-  const [language, setLanguage] = useState<Language>(() => typeof window !== "undefined" && window.localStorage.getItem("evergy-language") === "uk" ? "uk" : "en");
+  const [language, setLanguage] = useState<Language>("en");
   const t = translations[language];
   const carProfile = getCarProfile();
 
@@ -63,6 +65,18 @@ const {
    */
   const currentLimit =
     telemetry.chargingCurrentTargetAmps;
+  const adaptive = useAdaptiveCharging(
+    currentLimit,
+    carProfile.adaptiveStopVoltage,
+    carProfile.adaptiveLowVoltage,
+    carProfile.adaptiveLowCurrent,
+    carProfile.adaptiveStep,
+    carProfile.adaptiveEnabled ? carProfile.adaptiveRules : [],
+    carProfile.adaptiveEnabled,
+    isCharging,
+    startCharging,
+    stopCharging,
+  );
 
   /*
    * Actual charging current from telemetry.
@@ -750,6 +764,7 @@ function applyCurrent() {
             {language === "uk" ? "Помилка з’єднання" : "Connection error"}
           </div>
         )}
+        <AdaptiveCard telemetry={adaptive.telemetry} decision={adaptive.lastAction ?? adaptive.decision} error={adaptive.error} dark={isDark} uk={language === "uk"} />
       </div>
 
       <BottomNav dark={isDark} />

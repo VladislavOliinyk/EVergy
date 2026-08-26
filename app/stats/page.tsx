@@ -35,7 +35,7 @@ export default function StatsPage() {
   } = useChargerTelemetry();
 
   const [theme, setTheme] =
-    useState<Theme>(() => typeof window !== "undefined" && window.localStorage.getItem("evergy-theme") === "light" ? "light" : "dark");
+    useState<Theme>("dark");
 
   const [themeReady, setThemeReady] =
     useState(false);
@@ -199,7 +199,7 @@ const recentHistory =
           : "bg-[#f4f6f7] text-[#111517]"
       }`}
     >
-      <div className="mx-auto min-h-screen w-full max-w-[760px] px-5 pb-24 pt-6 sm:px-8">
+      <div className="mx-auto min-h-screen w-full max-w-5xl px-5 pb-28 pt-6 sm:px-8 lg:px-10">
 
         {/* ================================================================ */}
         {/* HEADER                                                           */}
@@ -331,7 +331,7 @@ const recentHistory =
         {/* ================================================================ */}
 
         <section
-          className={`mt-7 overflow-hidden rounded-[2rem] border ${
+          className={`mt-7 overflow-hidden rounded-[2rem] border shadow-[0_20px_70px_rgba(0,0,0,0.04)] ${
             isDark
               ? "border-white/[0.07] bg-white/[0.02]"
               : "border-black/[0.06] bg-white/70"
@@ -490,7 +490,7 @@ const recentHistory =
         {/* SUMMARY                                                          */}
         {/* ================================================================ */}
 
-        <section className="mt-4 grid grid-cols-3 gap-2.5">
+        <section className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
 
           <SummaryCard
             label={t.yearTotal}
@@ -517,7 +517,7 @@ const recentHistory =
 
         </section>
 
-        <section className="mt-4 grid grid-cols-3 gap-2.5">
+        <section className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
           <SummaryCard label={`${t.energy} / LOCAL`} value={localEnergy.toFixed(1)} unit="kWh" dark={isDark} />
           <SummaryCard label={t.estimatedCost} value={yearlyEnergy && car.dayRate !== null ? (sessionCost(yearlyEnergy, car) ?? 0).toFixed(0) : "—"} unit={yearlyEnergy && car.dayRate !== null ? car.currency : ""} dark={isDark} />
           <SummaryCard label={t.estimatedRange} value={estimatedRange(yearlyEnergy, car)?.toFixed(0) ?? "—"} unit={estimatedRange(yearlyEnergy, car) ? "km" : ""} dark={isDark} />
