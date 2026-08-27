@@ -34,3 +34,20 @@ input[type="time"] {
   min-width: 0;
   max-width: 100%;
 }
+
+input, select, button {
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, transform 120ms ease, box-shadow 160ms ease;
+}
+
+input::placeholder {
+  color: #8b93a1;
+  opacity: 1;
+}
+
+@media (max-width: 480px) {
+  input[type="time"] {
+    font-size: 0.8rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
