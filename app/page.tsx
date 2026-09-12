@@ -764,7 +764,7 @@ function applyCurrent() {
             {language === "uk" ? "Помилка з’єднання" : "Connection error"}
           </div>
         )}
-        <AdaptiveCard telemetry={adaptive.telemetry} decision={adaptive.lastAction ?? adaptive.decision} error={adaptive.error} dark={isDark} uk={language === "uk"} />
+        <AdaptiveCard telemetry={adaptive.telemetry} decision={adaptive.lastAction ?? adaptive.decision} error={adaptive.error} lastUpdated={adaptive.lastUpdated} dark={isDark} uk={language === "uk"} />
       </div>
 
       <BottomNav dark={isDark} />

@@ -19,5 +19,8 @@ export async function GET() {
   if (rawVoltage === null && rawCurrent === null) {
     return NextResponse.json({ error: "Tuya returned no voltage/current telemetry", availableCodes: Object.keys(values) }, { status: 502 });
   }
-  return NextResponse.json({ voltage: rawVoltage === null ? null : rawVoltage / 10, current: rawCurrent === null ? null : rawCurrent / 1000, power: rawPower === null ? null : rawPower / 10, energy: rawEnergy === null ? null : rawEnergy / 1000, fault: values.fault ?? null, onlineState: values.online_state == null ? null : String(values.online_state), timestamp: new Date().toISOString(), availableCodes: Object.keys(values) });
+  const rawFault = numberValue(values.fault);
+  const onlineValue = values.online_state;
+  const onlineState = onlineValue === true || onlineValue === 1 || String(onlineValue).toLowerCase() === "online" || String(onlineValue).toLowerCase() === "true" ? "online" : onlineValue == null ? null : String(onlineValue);
+  return NextResponse.json({ voltage: rawVoltage === null ? null : rawVoltage / 10, current: rawCurrent === null ? null : rawCurrent / 1000, power: rawPower === null ? null : rawPower / 10, energy: rawEnergy === null ? null : rawEnergy / 1000, fault: rawFault ?? (values.fault == null ? null : String(values.fault)), onlineState, timestamp: new Date().toISOString(), availableCodes: Object.keys(values) });
 }
