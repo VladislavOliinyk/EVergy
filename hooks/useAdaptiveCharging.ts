@@ -21,11 +21,13 @@ export function useAdaptiveCharging(targetCurrent: number | null, minVoltage = 1
     let active = true;
     const poll = async () => {
       try {
+        console.info("[Adaptive] Requesting Tuya telemetry", new Date().toISOString());
         const controller = new AbortController();
         const timeout = window.setTimeout(() => controller.abort(), 8000);
-        const response = await fetch("/api/tuya/status", { cache: "no-store", signal: controller.signal });
+        const response = await fetch(`/api/tuya/status?t=${Date.now()}`, { cache: "no-store", signal: controller.signal, headers: { "cache-control": "no-cache" } });
         window.clearTimeout(timeout);
         const body = await response.json() as TuyaTelemetry & { error?: string };
+        console.info("[Adaptive] Tuya response", { ok: response.ok, status: response.status, voltage: body.voltage, current: body.current, error: body.error });
         if (!response.ok) throw new Error(body.error ?? `Tuya request failed (${response.status})`);
         if (!active) return;
         setTelemetry(body); setError(null); setLastUpdated(new Date().toISOString());
@@ -41,7 +43,7 @@ export function useAdaptiveCharging(targetCurrent: number | null, minVoltage = 1
           if (result.decision === "STOP" && result.stopCharging) { callbackRef.current.onStop?.(); actionRef.current = action; }
           else if ((result.decision === "REDUCE" || result.decision === "RECOVER") && result.targetCurrent !== targetCurrent) { callbackRef.current.onSetCurrent?.(result.targetCurrent); actionRef.current = action; }
         }
-      } catch (caught) { if (active) setError(caught instanceof DOMException && caught.name === "AbortError" ? "Tuya request timed out" : caught instanceof Error ? caught.message : "Tuya telemetry unavailable"); }
+      } catch (caught) { console.error("[Adaptive] Tuya polling failed", caught); if (active) setError(caught instanceof DOMException && caught.name === "AbortError" ? "Tuya request timed out" : caught instanceof Error ? caught.message : "Tuya telemetry unavailable"); }
     };
     poll(); const timer = window.setInterval(poll, 3000);
     return () => { active = false; window.clearInterval(timer); };
