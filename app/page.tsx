@@ -71,7 +71,6 @@ const {
     carProfile.adaptiveLowVoltage,
     carProfile.adaptiveLowCurrent,
     carProfile.adaptiveStep,
-    carProfile.adaptiveEnabled ? carProfile.adaptiveRules : [],
     carProfile.adaptiveEnabled,
     isCharging,
     startCharging,

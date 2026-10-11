@@ -5,7 +5,7 @@ import { AdaptiveChargingController, type AdaptiveDecision } from "../domain/ada
 import type { TuyaTelemetry } from "../domain/telemetryProvider";
 import { addAdaptiveHistory, getAdaptiveHistory, type AdaptiveHistoryEntry } from "../lib/adaptiveHistory";
 
-export function useAdaptiveCharging(targetCurrent: number | null, minVoltage = 180, lowVoltage = 200, minCurrent = 6, step = 2, rules: { belowVoltage: number; current: number }[] = [], enabled = false, charging = false, onSetCurrent?: (amps: number) => void, onStop?: () => void) {
+export function useAdaptiveCharging(targetCurrent: number | null, stopVoltage = 180, targetVoltage = 200, minCurrent = 6, step = 2, enabled = false, charging = false, onSetCurrent?: (amps: number) => void, onStop?: () => void) {
   const [telemetry, setTelemetry] = useState<TuyaTelemetry | null>(null);
   const [decision, setDecision] = useState<AdaptiveDecision | null>(null);
   const [lastAction, setLastAction] = useState<AdaptiveDecision | null>(null);
@@ -15,11 +15,10 @@ export function useAdaptiveCharging(targetCurrent: number | null, minVoltage = 1
   const controllerRef = useRef<AdaptiveChargingController | null>(null);
   const actionRef = useRef<string | null>(null);
   const callbackRef = useRef({ onSetCurrent, onStop });
-  const rulesKey = JSON.stringify(rules);
 
   useEffect(() => { callbackRef.current = { onSetCurrent, onStop }; }, [onSetCurrent, onStop]);
   useEffect(() => { setHistory(getAdaptiveHistory()); }, []);
-  useEffect(() => { controllerRef.current = new AdaptiveChargingController({ minVoltage, lowVoltage, minCurrent, maxCurrent: 32, step, hysteresis: 3, recoveryVoltage: lowVoltage + 15, cooldownMs: 12_000, rules: JSON.parse(rulesKey) }); actionRef.current = null; }, [minVoltage, lowVoltage, minCurrent, step, rulesKey]);
+  useEffect(() => { controllerRef.current = new AdaptiveChargingController({ stopVoltage, targetVoltage, minCurrent, maxCurrent: 32, step, tolerance: 2, cooldownMs: 12_000 }); actionRef.current = null; }, [stopVoltage, targetVoltage, minCurrent, step]);
   useEffect(() => {
     let active = true;
     const poll = async () => {
