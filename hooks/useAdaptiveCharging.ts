@@ -5,7 +5,7 @@ import { AdaptiveChargingController, type AdaptiveDecision } from "../domain/ada
 import type { TuyaTelemetry } from "../domain/telemetryProvider";
 import { addAdaptiveHistory, getAdaptiveHistory, type AdaptiveHistoryEntry } from "../lib/adaptiveHistory";
 
-export function useAdaptiveCharging(targetCurrent: number | null, stopVoltage = 180, targetVoltage = 200, minCurrent = 6, step = 2, enabled = false, charging = false, onSetCurrent?: (amps: number) => void, onStop?: () => void) {
+export function useAdaptiveCharging(targetCurrent: number | null, stopVoltage = 180, targetVoltage = 200, minCurrent = 6, maxCurrent = 32, step = 2, enabled = false, charging = false, onSetCurrent?: (amps: number) => void, onStop?: () => void) {
   const [telemetry, setTelemetry] = useState<TuyaTelemetry | null>(null);
   const [decision, setDecision] = useState<AdaptiveDecision | null>(null);
   const [lastAction, setLastAction] = useState<AdaptiveDecision | null>(null);
@@ -18,7 +18,7 @@ export function useAdaptiveCharging(targetCurrent: number | null, stopVoltage = 
 
   useEffect(() => { callbackRef.current = { onSetCurrent, onStop }; }, [onSetCurrent, onStop]);
   useEffect(() => { setHistory(getAdaptiveHistory()); }, []);
-  useEffect(() => { controllerRef.current = new AdaptiveChargingController({ stopVoltage, targetVoltage, minCurrent, maxCurrent: 32, step, tolerance: 2, cooldownMs: 12_000 }); actionRef.current = null; }, [stopVoltage, targetVoltage, minCurrent, step]);
+  useEffect(() => { controllerRef.current = new AdaptiveChargingController({ stopVoltage, targetVoltage, minCurrent, maxCurrent, step, tolerance: 2, cooldownMs: 12_000 }); actionRef.current = null; }, [stopVoltage, targetVoltage, minCurrent, maxCurrent, step]);
   useEffect(() => {
     let active = true;
     const poll = async () => {

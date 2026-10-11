@@ -70,6 +70,7 @@ const {
     carProfile.adaptiveStopVoltage,
     carProfile.adaptiveLowVoltage,
     carProfile.adaptiveLowCurrent,
+    carProfile.adaptiveMaxCurrent,
     carProfile.adaptiveStep,
     carProfile.adaptiveEnabled,
     isCharging,

@@ -12,6 +12,12 @@ const increased = controller.evaluate({ voltage: 202, measuredCurrent: 12, targe
 assert.equal(increased.decision, "RECOVER");
 assert.equal(increased.targetCurrent, 14);
 
+const capped = new AdaptiveChargingController({ ...config, maxCurrent: 14 }).evaluate({ voltage: 220, measuredCurrent: 14, targetCurrent: 14, now: 13_001 });
+assert.equal(capped.decision, "HOLD");
+
+const limitApplied = new AdaptiveChargingController({ ...config, maxCurrent: 14 }).evaluate({ voltage: 220, measuredCurrent: 16, targetCurrent: 16, now: 13_001 });
+assert.equal(limitApplied.targetCurrent, 14);
+
 const held = controller.evaluate({ voltage: 198, measuredCurrent: 14, targetCurrent: 14, now: 26_002 });
 assert.equal(held.decision, "HOLD");
 
